@@ -1546,7 +1546,14 @@ function parseGeneric(rows){
   return {meta:{name:"",region:""}, points:pts, issues};
 }
 
-function parseRows(rows){ return isMCL(rows) ? Object.assign(parseMCL(rows),{format:"MCL"}) : Object.assign(parseGeneric(rows),{format:"Générique"}); }
+function parseRows(rows){
+  if(isTemplate(rows)>=0) return Object.assign(parseTemplatePlat(rows),{format:"Modèle WGS 84"});
+  return isMCL(rows) ? Object.assign(parseMCL(rows),{format:"MCL"}) : Object.assign(parseGeneric(rows),{format:"Générique"}); }
+/* modèle Excel WGS 84 utilisé pour créer une plateforme complète */
+function parseTemplatePlat(rows){ const points=[], issues=[], ids=new Set();
+  parseTemplate(rows).forEach(x=>{ const v=validatePoint(x.raw,{ids}); if(v.errors.length){ issues.push({row:x.row,name:x.raw.name||x.raw.id||"",msg:v.errors[0]}); return; }
+    ids.add(v.point.id); points.push(Object.assign(v.point,{sub:SUBS[v.point.cat]||v.point.cat,row:x.row})); });
+  return {points,issues,meta:{name:"",region:"",title:"Modèle d'import WGS 84"}}; }
 
 /* ---------- Contrôle qualité WGS 84 / PANS-AIM ---------- */
 function median(a){ const b=a.filter(x=>x!=null&&isFinite(x)).sort((x,y)=>x-y); if(!b.length) return null; const m=b.length>>1; return b.length%2?b[m]:(b[m-1]+b[m])/2; }
@@ -1921,8 +1928,9 @@ function importForm(existing){
     $("iRes").innerHTML=`<div class="empty">Lecture de ${esc(f.name)}…</div>`;
     try{
       const buf=await f.arrayBuffer();
-      const wb=/\.(csv|txt)$/i.test(f.name) ? XLSX.read(new TextDecoder("utf-8").decode(buf).replace(/^\ufeff/,""),{type:"string",raw:true}) : XLSX.read(buf,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+      const wb=/\.(csv|txt)$/i.test(f.name) ? XLSX.read(new TextDecoder("utf-8").decode(buf).replace(/^\ufeff/,""),{type:"string",raw:true}) : XLSX.read(buf,{type:"array"});
+      const sheets=wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null}));
+      const rows=sheets.find(rw=>MCL.isTemplate(rw)>=0)||sheets[wb.SheetNames.indexOf("Points")]||sheets[0];
       const r=MCL.parseRows(rows);
       if(!r.points.length) throw new Error("Aucun point valide trouvé dans le fichier.");
       const q=MCL.quality(r.points);
