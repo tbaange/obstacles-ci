@@ -926,6 +926,18 @@ details.cdet summary{cursor:pointer;list-style:none}details.cdet summary small{d
 .ev2[data-ec]{cursor:pointer}
 
 .mk-new.leve{opacity:.45;filter:grayscale(1)}
+
+/* menu */
+.mgrp{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 12px;border:0;border-top:1px solid var(--line);background:#fff;text-align:left;font:inherit;color:inherit}
+.mrow:first-child{border-top:0}.mrow:active{background:#f1f5f9}
+.mrow .mi{width:36px;height:36px;flex:none;border-radius:10px;background:#e8eefb;display:flex;align-items:center;justify-content:center}
+.mrow .mi svg{width:20px;height:20px;fill:none;stroke:#0b2545;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mrow .mt{flex:1;min-width:0}.mrow .mt b{display:block;font-size:15px}.mrow .mt small{display:block;font-size:12.5px;color:#475569;line-height:1.35;margin-top:1px}
+.mrow .mc{color:#94a3b8;font-size:22px;line-height:1}
+.mrow.dg .mi{background:#fef2f2}.mrow.dg .mi svg{stroke:#b91c1c}.mrow.dg b{color:#b91c1c}
+/* guide */
+.guide{font-size:14.5px;line-height:1.55;color:#1e293b}.guide p{margin:0 0 10px}.guide ol,.guide ul{margin:0 0 10px;padding-left:20px}.guide li{margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -1000,7 +1012,7 @@ details.cdet summary{cursor:pointer;list-style:none}details.cdet summary small{d
   <button id="bExport"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Suivi</button>
 </nav>
 <div class="scrim" id="scrim"></div>
-<section class="sheet" id="sheet"><div class="sh-h"><div class="grab"></div><div class="sh-t"><button class="x" id="shBack" aria-label="Retour" style="display:none;font-size:26px;line-height:1">‹</button><h2 id="shT"></h2><button class="x" id="shX">×</button></div><div id="shSub"></div></div><div class="sh-b" id="shB"></div></section>
+<section class="sheet" id="sheet"><div class="sh-h"><div class="grab"></div><div class="sh-t"><button class="x" id="shBack" aria-label="Retour" style="display:none;font-size:26px;line-height:1">‹</button><h2 id="shT"></h2><button class="x" id="shHelp" aria-label="Guide d'utilisation" style="font-size:17px;font-weight:800;margin-right:6px">?</button><button class="x" id="shX">×</button></div><div id="shSub"></div></div><div class="sh-b" id="shB"></div></section>
 <div id="toast"></div>
 <div id="dlg"><div class="box"><p id="dlgT"></p><div class="row"><button class="btn" id="dlgN">Annuler</button><button class="btn p" id="dlgY">OK</button></div></div></div>
 <div id="viewer"><img id="viewImg" alt=""></div>
@@ -2199,7 +2211,7 @@ function liveHtml(p){
 
 /* ---------- feuilles ---------- */
 let listOpen=false;
-function openSheet(title,sub,body,full){ listOpen=false; $("shBack").style.display="grid"; $("shT").innerHTML=title; $("shSub").innerHTML=sub||""; $("shB").innerHTML=body; $("shB").scrollTop=0; $("sheet").classList.toggle("full",!!full); $("sheet").classList.add("on"); $("scrim").classList.add("on"); }
+function openSheet(title,sub,body,full){ listOpen=false; HELP_CTX=helpFor(String(title)); const hb=$("shHelp"); if(hb) hb.style.display=/^Guide/.test(String(title))?"none":""; $("shBack").style.display="grid"; $("shT").innerHTML=title; $("shSub").innerHTML=sub||""; $("shB").innerHTML=body; $("shB").scrollTop=0; $("sheet").classList.toggle("full",!!full); $("sheet").classList.add("on"); $("scrim").classList.add("on"); }
 function closeSheet(){ NAV=[]; $("sheet").classList.remove("on"); $("scrim").classList.remove("on"); listOpen=false; }
 $("shX").onclick=closeSheet; $("scrim").onclick=closeSheet;
 let sy=null; $("sheet").querySelector(".sh-h").addEventListener("touchstart",e=>{sy=e.touches[0].clientY},{passive:true});
@@ -3078,16 +3090,24 @@ function inspForm(I){
 }
 
 /* ---- liste des inspections de la plateforme ---- */
+async function deleteInsp(uid,after){ const I=inspOf(uid); if(!I) return; const d=inspData(uid);
+  if(!(await ask(`Supprimer le dossier ${I.ref} ? Ses ${d.items.length} contrôle(s) restent dans la fiche et la vie de chaque point, mais ne seront plus rattachés à une mission.`,"Supprimer le dossier","Annuler"))) return;
+  for(const ic in (S.controls||{})) for(const id in S.controls[ic]) (S.controls[ic][id]||[]).forEach(c=>{ if(c.insp===uid) delete c.insp; });
+  for(const ic in (S.newObs||{})) (S.newObs[ic]||[]).forEach(o=>{ if(o.insp===uid) delete o.insp; });
+  for(const ic in (S.ecarts||{})) (S.ecarts[ic]||[]).forEach(e=>{ if(e.insp===uid) delete e.insp; });
+  S.insp=(S.insp||[]).filter(x=>x.uid!==uid); if(S.activeInsp&&S.activeInsp[I.icao]===uid) delete S.activeInsp[I.icao];
+  save(); renderProg(); toast(`🗑 Dossier ${I.ref} supprimé`); (after||openInspList)(); }
 function openInspList(){
   if(!needPlat()) return; const L_=inspList();
   openSheet("Inspections · "+esc(PLAT.icao),`<div class="chips"><span class="chip">${esc(PLAT.name)}</span><span class="chip">${L_.length} dossier(s)</span></div>`,
    `<button class="btn p" id="iNew" style="width:100%;margin-bottom:12px">＋ Nouvelle inspection</button>`+
    (L_.length?L_.map(I=>{ const d=inspData(I.uid); return `<div class="pl" data-uid="${esc(I.uid)}"><div class="h"><div class="code" style="font-size:11px;line-height:1.1;text-align:center">📁<br>${esc(I.ref.split("-").slice(-1)[0])}</div>
      <div class="nm"><b>${esc(I.ref)}</b><small>${esc(I.objet)}</small><small>${esc(I.type)} · ${esc(I.debut)}${I.fin?" → "+esc(I.fin):""}</small></div></div>
-     <div class="chips" style="margin-top:8px">${inspBadge(I)}<span class="chip">${d.items.length} contrôle(s)</span><span class="chip">${d.obsDone}/${d.obsTot} obstacles</span>${d.todo.length?`<span class="chip" style="color:#9a3412;background:#ffedd5">⚠ ${d.todo.length} à traiter</span>`:""}${d.news.length?`<span class="chip" style="color:#9d174d;background:#fce7f3">+${d.news.length} nouveaux</span>`:""}</div></div>`; }).join("")
+     <div class="chips" style="margin-top:8px">${inspBadge(I)}<span class="chip">${d.items.length} contrôle(s)</span><span class="chip">${d.obsDone}/${d.obsTot} obstacles</span>${d.todo.length?`<span class="chip" style="color:#9a3412;background:#ffedd5">⚠ ${d.todo.length} à traiter</span>`:""}${d.news.length?`<span class="chip" style="color:#9d174d;background:#fce7f3">+${d.news.length} nouveaux</span>`:""}</div><div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="cp" data-idel="${esc(I.uid)}" style="color:#b91c1c;background:#fef2f2">🗑 Supprimer</button></div></div>`; }).join("")
      :`<div class="empty">Aucune inspection pour ${esc(PLAT.icao)}.<br>Créez un dossier pour regrouper les contrôles d'une mission.</div>`),true);
   $("iNew").onclick=()=>inspForm(null);
   $("shB").querySelectorAll(".pl[data-uid]").forEach(e=>e.onclick=()=>openInsp(e.dataset.uid));
+  $("shB").querySelectorAll("[data-idel]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); deleteInsp(b.dataset.idel); });
 }
 
 /* ---- dossier d'une inspection ---- */
@@ -3113,7 +3133,7 @@ function openInsp(uid){
   if(d.todo.length) b+=`<div class="sec">À traiter (${d.todo.length})</div>`+d.todo.map(({p,c})=>`<div class="li" data-id="${esc(p.id)}"><span class="dot" style="background:${STATUS[c.status].c};color:${STATUS[c.status].c}"></span><div class="t"><b>${esc(p.name)}</b><small>${esc(p.code||p.id)} · ${esc(STATUS[c.status].n)}${c.motif?" · "+esc(c.motif):""}${c.light&&c.light!=="Fonctionnel"?" · balisage "+esc(c.light.toLowerCase()):""}</small></div></div>`).join("");
   b+=`<div class="sec">Contrôles réalisés (${d.items.length})</div>`+(d.items.length?d.items.slice().reverse().map(({p,c,n})=>`<div class="li" data-id="${esc(p.id)}"><span class="dot" style="background:${STATUS[c.status].c};color:${STATUS[c.status].c}"></span><div class="t"><b>${esc(p.name)}</b><small>${esc(p.code||p.id)} · contrôle n°${n} · ${esc(c.op||"")}${c.comment?" · "+esc(c.comment.slice(0,50)):""}</small><span class="st" style="background:${STATUS[c.status].c}">${STATUS[c.status].s}</span></div><div class="r"><b style="font-size:12px">${esc(c.ts.slice(5,10).split("-").reverse().join("/"))}</b><small>${esc(c.ts.slice(11,16))}</small></div></div>`).join(""):`<div class="empty" style="padding:12px">Aucun contrôle rattaché.${I.statut!=="close"?" Pour ajouter les contrôles déjà réalisés, touchez « 🔗 Rattacher des contrôles » ci-dessus. Pour les nouveaux, activez le dossier puis contrôlez les points sur la carte.":""}</div>`);
   if(d.news.length) b+=`<div class="sec">Nouveaux obstacles (${d.news.length})</div>`+d.news.map(o=>`<div class="li" data-id="${esc(o.id)}"><span class="dot" style="background:#db2777;color:#db2777"></span><div class="t"><b>${esc(o.name)}</b><small>${esc(o.id)} · ${esc(o.typ)} · ${esc(o.op||"")}</small></div></div>`).join("");
-  b+=`<div class="sec">Zone de danger</div><button class="btn w" id="dDel" style="width:100%;color:#b91c1c">Supprimer le dossier (les contrôles sont conservés)</button>`;
+  b+=`<button class="btn w" id="dDel" style="width:100%;color:#b91c1c;margin-top:16px">🗑 Supprimer ce dossier (les contrôles sont conservés)</button>`;
   openSheet("📁 "+esc(I.ref),`<div class="chips">${inspBadge(I)}<span class="chip">${esc(I.icao)} · ${esc(PLAT.name)}</span></div>`,b,true);
   const B=$("shB"), on=(id,f)=>{ const e=$(id); if(e) e.onclick=f; };
   on("dAct",()=>{ S.activeInsp=S.activeInsp||{}; S.activeInsp[I.icao]=uid; save(); renderProg(); toast("▶ Dossier actif : les prochains contrôles y seront rattachés"); openInsp(uid); });
@@ -3124,9 +3144,7 @@ function openInsp(uid){
   on("dMap",()=>showInspOnMap(I));
   on("dPdf",()=>exportPdf("all",null,uid)); on("dDocx",()=>exportDocx("all",null,uid));
   on("dCsv",()=>deliver(new Blob([buildHistCsv(uid)],{type:"text/csv;charset=utf-8"}),`${I.ref}_controles_${stamp()}.csv`,"text/csv"));
-  on("dDel",async()=>{ if(!(await ask(`Supprimer le dossier ${I.ref} ? Les contrôles restent dans l'historique des points, mais ne seront plus rattachés à une inspection.`,"Supprimer"))) return;
-    for(const id in CT()) CT()[id].forEach(c=>{ if(c.insp===uid) delete c.insp; }); NO().forEach(o=>{ if(o.insp===uid) delete o.insp; });
-    S.insp=S.insp.filter(x=>x.uid!==uid); if(S.activeInsp[I.icao]===uid) delete S.activeInsp[I.icao]; save(); renderProg(); toast("Dossier supprimé"); openInspList(); });
+  on("dDel",()=>deleteInsp(uid));
   B.querySelectorAll(".li[data-id]").forEach(x=>x.onclick=()=>{ const p=getPt(x.dataset.id); if(!p) return; if(!S.cats[p.cat]){ S.cats[p.cat]=true; save(); applyCats(); } map.setView([p.lat,p.lon],18); openPoint(p.id); });
 }
 
@@ -3482,25 +3500,117 @@ function openSuivi(){ if(!needPlat()) return;
 
 /* ---------- menu ---------- */
 $("bMenu").onclick=()=>openMenu();
+{ const hb=$("shHelp"); if(hb) hb.onclick=()=>openGuide(HELP_CTX); }
+/* ---------- menu ---------- */
+const MI={q:'<path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/>',lev:'<path d="M5 4h11l3 3v13H5z"/><path d="M9 11h6M9 15h6"/>',flt:'<path d="M4 5h16l-6 8v5l-4 2v-7z"/>',
+  jr:'<path d="M8 4h8v3H8z"/><path d="M6 6h12v15H6z"/><path d="M9 12h6M9 16h4"/>',ins:'<path d="M3 7h7l2 2h9v10H3z"/>',ec:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+  dec:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><path d="M12 7v6M9 10h6"/>',imp:'<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  add:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',tpl:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
+  pl:'<path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M10 21v-6h4v6"/>',pln:'<path d="M12 4v16M4 12h16"/>',gd:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/>',
+  tm:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4a3 3 0 0 1 0 6M21 20c0-2.6-1.6-4.8-4-5.6"/>',pw:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  out:'<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',wipe:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/>'};
+const mrow=(id,ic,t,sub,danger)=>`<button type="button" class="mrow${danger?" dg":""}" id="${id}"><span class="mi"><svg viewBox="0 0 24 24" aria-hidden="true">${MI[ic]}</svg></span><span class="mt"><b>${t}</b>${sub?`<small>${sub}</small>`:""}</span><span class="mc" aria-hidden="true">›</span></button>`;
 function openMenu(){
-  openSheet("Menu","",`<div class="acts" style="grid-template-columns:1fr">
-    ${PLAT?`<button class="btn p" id="mQ">✅ Qualité WGS 84 de ${esc(PLAT.icao)}</button>`:""}
-    ${PLAT?`<button class="btn" id="mF">🔎 Filtre avancé</button>`:""}<button class="btn" id="mJ">📋 Contrôles réalisés (journal)</button>
-    ${PLAT?`<button class="btn" id="mAdd">➕ Ajouter un point / obstacle (WGS 84)</button><button class="btn" id="mImpP">📥 Importer des points (modèle Excel)</button>`:""}
-    <button class="btn" id="mTpl">📄 Télécharger le modèle d'import Excel</button>
-    <button class="btn" id="mH">🛫 Plateformes</button><button class="btn" id="mI">＋ Ajouter / remplacer une plateforme (MCL)</button></div>
-   <div class="sec">À propos</div><table class="kv"><tr><td>Plateformes</td><td>${PLATS.map(p=>esc(p.icao)).join(", ")}</td></tr>
-   <tr><td>Référentiel</td><td>WGS 84 · altitudes EGM96</td></tr><tr><td>Distance / cap</td><td>Vincenty, ellipsoïde WGS 84</td></tr><tr><td>Protection</td><td>Base chiffrée AES-256</td></tr></table>
-   <div class="sec">Bon usage</div><div style="font-size:13.5px;line-height:1.5;color:#334155">• Le GPS d'un téléphone est précis à <b>3–10 m</b> : il sert à <b>retrouver</b> l'obstacle, pas à le re-lever. Un écart inférieur à la précision affichée n'est pas significatif.<br>• Coordonnées et hauteurs affichées = base de référence, non modifiées.<br>• Boussole : faites un « 8 » avec le téléphone si la flèche dérive.<br>• Le fond de carte nécessite une connexion ; points, GPS et saisies fonctionnent hors réseau une fois l'appli ouverte.</div>
+  const nE=PLAT?ECT().filter(ecOpen).length:0, nD=PLAT?NO().filter(o=>!o.leve).length:0;
+  openSheet("Menu",PLAT?`<div class="chips"><span class="chip">${esc(PLAT.icao)} · ${esc(PLAT.name)}</span></div>`:"",`
+   ${PLAT?`<div class="sec">Plateforme ${esc(PLAT.icao)}</div><div class="mgrp">
+     ${mrow("mQ","q","Qualité des données","Contrôle WGS 84 de la base · conformité OACI")}
+     ${mrow("mSv","lev","Fiche du levé","Métadonnées du géomètre (organisme, précision, référentiels…)")}
+     ${mrow("mF","flt","Filtre avancé","Afficher les points selon leur type, état, hauteur…")}</div>
+   <div class="sec">Terrain</div><div class="mgrp">
+     ${mrow("mJ","jr","Journal des contrôles","Tous les contrôles réalisés, avec filtres")}
+     ${mrow("mIn","ins","Missions d'inspection","Regrouper les contrôles d'une mission et produire son rapport")}
+     ${mrow("mEc","ec","Écarts",nE?`${nE} ouvert(s) · suivi, actions, levées`:"Suivi des non-conformités")}
+     ${mrow("mDc","dec","Déclarer un obstacle ou un repère",nD?`${nD} déclaration(s) à lever`:"Élément vu sur le terrain et absent de la base")}</div>
+   <div class="sec">Données</div><div class="mgrp">
+     ${mrow("mImpP","imp","Importer des points","Fichier du géomètre au format du modèle de livraison")}
+     ${mrow("mAdd","add","Saisir un point WGS 84","Coordonnées connues (fiche, plan, rapport)")}
+     ${mrow("mTpl","tpl","Télécharger le modèle de livraison","À remettre au géomètre : feuilles Points et Métadonnées")}</div>`:""}
+   <div class="sec">Plateformes</div><div class="mgrp">
+     ${mrow("mH","pl","Mes plateformes","Changer d'aérodrome, supprimer une plateforme")}
+     ${mrow("mI","pln","Ajouter ou remplacer une plateforme","À partir du modèle de livraison ou d'une MCL")}
+     ${PLAT?"":mrow("mTpl","tpl","Télécharger le modèle de livraison","À remettre au géomètre : feuilles Points et Métadonnées")}</div>
+   <div class="sec">Aide</div><div class="mgrp">${mrow("mGd","gd","Guide d'utilisation","Chaque partie de l'application, pas à pas")}</div>
    <div class="sec">Mon compte</div><div class="note" style="margin-bottom:8px">${ACCOUNT?`Connecté : <b>${esc(ME.name)}</b> · ${ADMIN?"administrateur":"inspecteur"} (${esc(ME.id)})${ME.exp?` · accès jusqu'au ${esc(ME.exp)}`:""}`:"Connecté avec le mot de passe commun de l'équipe (transition)."}${NATIVE?`<br><small>Organisation : <b>${esc(SEC.org||"")}</b></small>`:""}</div>
-   ${ADMIN?`<button class="btn p" style="width:100%;margin-bottom:8px" id="mTeam">👥 Équipe & comptes</button>`:""}${ACCOUNT?`<button class="btn" style="width:100%;margin-bottom:8px" id="mPw">🔑 Changer mon mot de passe</button>`:""}
-   <div class="sec">Confidentialité</div><button class="btn w" style="width:100%" id="mLock">🔒 Se déconnecter (redemander le mot de passe)</button>
-   <button class="btn w" style="width:100%;margin-top:8px;color:#b91c1c" id="mWipe">🧹 Effacer toutes les données de cet appareil</button>
-   <p style="font-size:12.5px;color:var(--mut);line-height:1.45;margin-top:8px">Contrôles, photos et dossiers sont chiffrés sur l'appareil. Les rapports PDF/Word/CSV exportés ne le sont pas : supprimez-les après transmission.</p>`);
-  if(PLAT){ $("mQ").onclick=openQuality; $("mF").onclick=()=>openFilter(); $("mAdd").onclick=()=>addPointForm(null); $("mImpP").onclick=importPointsForm; } $("mJ").onclick=()=>openJournal({}); $("mTpl").onclick=downloadTemplate; $("mH").onclick=openHome; $("mI").onclick=()=>importForm();
-  $("mLock").onclick=async()=>{ await saveQ; await SEC.forget(); location.reload(); };
-  $("mWipe").onclick=wipeAll; if($("mTeam")) $("mTeam").onclick=openTeam; if($("mPw")) $("mPw").onclick=changePwForm;
+   <div class="mgrp">${ADMIN?mrow("mTeam","tm","Équipe et comptes","Créer les comptes, invitations, renouveler les accès"):""}${ACCOUNT?mrow("mPw","pw","Changer mon mot de passe",""):""}
+     ${mrow("mLock","out","Se déconnecter","Le mot de passe sera redemandé")}${mrow("mWipe","wipe","Effacer toutes les données de cet appareil","Irréversible : faites d'abord une sauvegarde",true)}</div>
+   <p style="font-size:12.5px;color:var(--mut);line-height:1.45;margin-top:8px">Contrôles, photos et dossiers sont chiffrés sur l'appareil. Les rapports exportés (PDF, Word, CSV) ne le sont pas : supprimez-les après transmission.</p>
+   <div class="sec">À propos</div><table class="kv"><tr><td>Plateformes</td><td>${PLATS.map(p=>esc(p.icao)).join(", ")||"—"}</td></tr>
+   <tr><td>Référentiel</td><td>WGS-84 · altitudes EGM-96</td></tr><tr><td>Distance / cap</td><td>Vincenty, ellipsoïde WGS-84</td></tr><tr><td>Protection</td><td>Données chiffrées AES-256</td></tr></table>`);
+  const on=(id,f)=>{ const e=$(id); if(e) e.onclick=f; };
+  on("mQ",openQuality); on("mSv",()=>surveyForm()); on("mF",()=>openFilter()); on("mJ",()=>openJournal({})); on("mIn",openInspList); on("mEc",()=>openEcarts({f:"open",sev:""}));
+  on("mDc",()=>{ if(watchId===null) startGps(); declareChoice(); }); on("mImpP",importPointsForm); on("mAdd",()=>addPointForm(null)); on("mTpl",downloadTemplate);
+  on("mH",openHome); on("mI",()=>importForm()); on("mGd",()=>openGuide()); on("mTeam",openTeam); on("mPw",changePwForm);
+  on("mLock",async()=>{ await saveQ; await SEC.forget(); location.reload(); }); on("mWipe",wipeAll);
 };
+
+/* ---------- guide d'utilisation ---------- */
+let HELP_CTX="demarrer";
+function helpFor(t){ const T=t.replace(/<[^>]+>/g,"");
+  return /^Menu/.test(T)?"demarrer":/^Contrôle|^Modifier le contrôle|^Annuler le contrôle/.test(T)?"controle":/^Écart|^Noter une action|^Clôturer/.test(T)?"ecarts":/^Déclar|^Modifier un|^Levé/.test(T)?"declarer"
+    :/^Inspections|^📁|Inspection|mission/i.test(T)?"missions":/^Suivi/.test(T)?"rapports":/^Fiche du levé|^Qualité/.test(T)?"oaci":/^Ajouter une plateforme|^Importer|^Ajouter un point|^Saisir/.test(T)?"donnees"
+    :/^Vie/.test(T)?"ecarts":/^Équipe|^Invitation|^Compte|^Renouveler/.test(T)?"equipe":/^Plateformes|^Supprimer|^Revenir/.test(T)?"demarrer":/^Filtre|^Liste|^Proximité|^Journal/.test(T)?"carte":"point"; }
+const GUIDE=[
+["demarrer","Démarrer",`<p>Sentinelle sert au <b>contrôle terrain</b> des obstacles et des repères WGS-84, en respectant les exigences de l'OACI (Annexe 15, Doc 9881, Doc 9674). Ce n'est pas une base de données : les données viennent du géomètre.</p>
+<ol><li><b>Ajouter une plateforme</b> : Menu › Ajouter ou remplacer une plateforme, puis choisissez le fichier livré par le géomètre (modèle de livraison) ou une MCL.</li>
+<li>Lisez le <b>rapport d'import</b> : conformité du jeu aux exigences OACI, métadonnées présentes, attributs manquants.</li>
+<li>Vérifiez la <b>fiche du levé</b> qui s'ouvre ensuite (organisme, précision, référentiels…).</li>
+<li>La plateforme s'affiche sur la carte : vous pouvez contrôler.</li></ol>
+<p>Changer d'aérodrome : bouton <b>Plateformes</b> en bas. Supprimer une plateforme : bouton 🗑 sur sa carte (vous choisissez de garder ou non les contrôles).</p>`],
+["carte","Carte, liste et proximité",`<ul><li><b>Carte</b> : touchez un point pour ouvrir sa fiche. Couleurs : non contrôlé, conforme (vert), non conforme (rouge), incomplet (gris). Lignes et polygones sont tracés.</li>
+<li><b>Liste</b> : tous les points, avec recherche et catégories (obstacles, repères, à traiter, à compléter OACI…).</li>
+<li><b>Proximité</b> : les points les plus proches de votre position GPS, du plus près au plus loin.</li>
+<li><b>Filtre avancé</b> (Menu) : afficher selon le type, l'état de contrôle, la hauteur…</li>
+<li><b>Guider</b> (fiche d'un point) : flèche et distance jusqu'au point.</li></ul>`],
+["point","Fiche d'un point",`<ul><li>En tête : les <b>écarts ouverts</b> sur ce point, puis les boutons Guider, <b>Contrôler</b>, Itinéraire, Centrer.</li>
+<li><b>Vie de l'obstacle</b> : toute l'histoire du point (origine, contrôles, écarts, actions, évolutions). Rien ne s'efface.</li>
+<li><b>Conformité OACI</b> : chaque attribut avec sa provenance (voir « Conformité OACI »).</li>
+<li><b>Historique des contrôles</b> : rapport Word de chaque contrôle (📝), modification des observations et photos (✏️), annulation motivée.</li></ul>
+<p>La fiche est en lecture : les constats se font uniquement lors d'un contrôle.</p>`],
+["controle","Contrôler un point",`<ol><li><b>Constat</b> : Présent, Absent / démantelé, Modifié ou Non vérifiable (repère : Intact, Endommagé, Déplacé, Détruit, Introuvable). Indiquez les conditions (jour, crépuscule, nuit) et la météo.</li>
+<li><b>Vérifications</b> : adaptées au point. Pour chacune, lisez l'exigence et répondez Conforme, Non conforme ou Non vérifié. Un « Non conforme » demande la gravité (proposée), la description de l'écart et, si possible, une photo.</li>
+<li><b>Tout le reste conforme</b> : coche d'un geste les vérifications restantes. La position reste « non vérifiée » si vous êtes à plus de 15 m ou sans GPS, et le fonctionnement des feux si le contrôle est de jour.</li>
+<li><b>Attributs constatés</b> (facultatif) : balisage, marquage, statut… ne modifiez que ce qui a changé.</li>
+<li><b>Photos et observations</b>, puis le <b>verdict</b> s'affiche : Conforme, Non conforme ou Contrôle incomplet. Enregistrez.</li></ol>
+<p><b>Position</b> : le GPS du téléphone (3–10 m) sert à retrouver le point, pas à le lever. À plus de 15 m, c'est vous qui jugez si l'obstacle est mal positionné.</p>`],
+["ecarts","Écarts et suivi",`<ul><li>Chaque vérification « Non conforme » ouvre un <b>écart</b> numéroté (aérodrome-année-agent-numéro), majeur ou mineur.</li>
+<li><b>Noter une action</b> : ce que l'équipe a fait (propriétaire informé, notification écrite, relance, NOTAM, mise à jour AIP…). L'application n'envoie rien ; « Autre » demande une précision. L'écart passe en « Action en cours ».</li>
+<li><b>Levée</b> : au contrôle suivant, si la vérification est conforme, l'application propose de lever l'écart ; ce contrôle en est la preuve.</li>
+<li><b>Clôturer sans levée</b> : avec un motif (obstacle démantelé, décision de l'autorité…).</li>
+<li>Liste et export : Menu › Écarts, ou Suivi.</li></ul>`],
+["declarer","Déclarer et faire lever",`<ol><li>Bouton <b>Déclarer</b> : un obstacle (type OACI obligatoire, point, ligne ou polygone, hauteur estimée, balisage, marquage, statut) ou un repère WGS-84 (numéro, type, état, accès). La position vient du GPS du téléphone : c'est un signalement.</li>
+<li>Suivi › <b>Déclarations à lever</b> (Word ou PDF) : le rapport à transmettre au prestataire.</li>
+<li>Quand le levé est fait : fiche de la déclaration › <b>Marquer comme levé</b>, puis importez le fichier du prestataire.</li></ol>`],
+["missions","Missions d'inspection",`<ol><li>Menu › Missions d'inspection › <b>Nouvelle inspection</b> : référence, objet, dates, équipe.</li>
+<li>La mission devient <b>active</b> : les contrôles suivants s'y rattachent automatiquement (champ « Dossier d'inspection » du contrôle). Un contrôle peut aussi être rattaché après coup.</li>
+<li>Fin de mission : <b>rapport de mission</b> (Word ou PDF), puis clôture.</li>
+<li>Supprimer une mission : bouton 🗑. Les contrôles et les écarts sont conservés, simplement détachés de la mission.</li></ol>`],
+["rapports","Rapports et exports",`<ul><li><b>Rapport d'un contrôle</b> (Word) : fiche du point › 📝 sous le contrôle.</li>
+<li><b>Rapport de mission</b> : depuis la mission.</li>
+<li><b>Rapport général</b> PDF ou Word et <b>dossier complet</b> (.zip) : Suivi, pour la période choisie.</li>
+<li><b>Déclarations à lever</b> (Word ou PDF) : Suivi.</li>
+<li><b>Export eTOD</b> : CSV aux champs du Doc 9881, GeoJSON (points, lignes, polygones) et métadonnées avec CRC-32Q.</li>
+<li><b>Écarts</b> et <b>historique</b> en CSV pour Excel.</li></ul>
+<p>Les fichiers exportés ne sont pas chiffrés : supprimez-les après transmission.</p>`],
+["oaci","Conformité OACI",`<p>Chaque attribut OACI d'un point porte sa provenance :</p>
+<ul><li><b>Levé</b> : valeur du fichier du géomètre, pour ce point.</li>
+<li><b>Fiche du levé</b> : valeur du rapport du géomètre, valable pour toute la base (feuille Métadonnées ou saisie dans Menu › Fiche du levé).</li>
+<li><b>Constaté</b> : observé par un agent lors d'un contrôle.</li>
+<li><b>À compléter</b> : absent. L'application ne déduit jamais une valeur.</li></ul>
+<p>Les précisions sont comparées aux exigences de la zone (zone 2 : 5 m / 3 m ; zone 3 : 0,5 m) quand la zone est connue. La liste « À compléter (OACI) » et le pourcentage de conformité sont dans Suivi.</p>`],
+["donnees","Importer des données",`<ul><li><b>Modèle de livraison</b> (Menu) : à remettre au géomètre. Feuille <b>Points</b> (une ligne par point) et feuille <b>Métadonnées</b> (la fiche du levé).</li>
+<li>Obligatoires : identifiant, catégorie, position WGS-84 (DMS ou décimal). Tout autre champ manquant est accepté et apparaît « À compléter ».</li>
+<li><b>Lignes et polygones</b> : une ligne Excel par sommet, même identifiant, géométrie Ligne ou Polygone, ordre_sommet 1, 2, 3…</li>
+<li><b>Repères</b> : catégorie « Station de contrôle », numéro au format Doc 9674, h, H, N.</li>
+<li>Importer : Menu › Importer des points (plateforme ouverte) ou Ajouter / remplacer une plateforme.</li></ul>`],
+["equipe","Équipe, sauvegarde et sécurité",`<ul><li><b>Comptes</b> (administrateur) : Menu › Équipe et comptes. Chaque agent a son compte et son mot de passe ; ses contrôles portent son nom.</li>
+<li><b>Partager / fusionner</b> : Suivi › partager mes contrôles, puis l'administrateur fusionne les fichiers reçus. Rien n'est dupliqué.</li>
+<li><b>Sauvegarde</b> : Suivi › Sauvegarder. Faites-en une avant de changer de téléphone ou d'effacer.</li>
+<li>Les données sont chiffrées sur l'appareil ; verrouillage automatique après 15 min en arrière-plan.</li></ul>`]];
+function openGuide(sec){ const k=sec||HELP_CTX||"demarrer"; const cur=GUIDE.find(g=>g[0]===k)||GUIDE[0];
+  openSheet("Guide · "+cur[1],"",`<div class="fchips" style="margin-bottom:10px;flex-wrap:wrap">${GUIDE.map(g=>`<button data-gd="${g[0]}" class="${g[0]===cur[0]?"on":""}">${g[1]}</button>`).join("")}</div><div class="guide">${cur[2]}</div>`,true);
+  $("shB").querySelectorAll("[data-gd]").forEach(b=>b.onclick=()=>openGuide(b.dataset.gd)); }
+
 
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&watchId!==null&&!me) startGps(); });
 /* verrouillage automatique : 15 min en arrière-plan */
@@ -3508,7 +3618,7 @@ let hiddenAt=0; document.addEventListener("visibilitychange",()=>{ if(document.h
 async function wipeAll(){
   if(!(await ask("Effacer de cet appareil TOUS les contrôles, photos, dossiers et points ajoutés ? Faites d'abord une sauvegarde (Suivi → Sauvegarder) si nécessaire. Action irréversible.","Tout effacer"))) return;
   await saveQ; S=null; save=()=>Promise.resolve();
-  try{ Object.keys(localStorage).filter(k=>k.startsWith("sentinelle")).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ Object.keys(localStorage).filter(k=>/^(sentinelle|sentapp)/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
   await SEC.forget(); await IDB.wipe(); await PDB.wipe();
   await new Promise(res=>{ try{ const r=indexedDB.deleteDatabase("sentapp_k"); r.onsuccess=r.onerror=r.onblocked=()=>res(); }catch(e){ res(); } });
   try{ if(window.caches) for(const k of await caches.keys()) await caches.delete(k); }catch(e){}
@@ -4079,7 +4189,7 @@ async function exportEtod(){ if(!needPlat()) return; const sv=surveyOf(), st=eto
   const z=new JSZip(); z.file(nm+".csv",csv); z.file(nm+".geojson",buildEtodGeojson()); z.file(nm+"_metadonnees.txt","﻿"+meta); deliver(await z.generateAsync({type:"blob"}),nm+".zip","application/zip"); }
 
 const lastCtlG=id=>lastCtl(id);
-window.__app={etodRows,etodScore,etodStats,etodForm,surveyForm,buildEtodCsv,exportEtod,crc32q,otResolve,etodRowsCore,leveForm,deletePlatForm,openEcarts,openEcart,openTimeline,timelineOf,declareForm,declareChoice,controlCancel,checksFor,ecarts:()=>JSON.parse(JSON.stringify(ECT())),quick:v=>{ const F=window.__ctlForm; if(!F) return; const K=F.st; if(v==="ok"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"intact":"present"); F.list().forEach(k=>F.set(k,"ok")); } else if(v==="nc"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"endommage":"present"); const k=F.list().find(x=>!["presence","position","environ"].includes(x))||"presence"; F.set(k,"nc"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Écart de test"; t.dispatchEvent(new Event("input")); } }); } else if(v==="mod"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"deplace":"modifie"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Modification constatée"; t.dispatchEvent(new Event("input")); }); } else if(v==="abs"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"detruit":"absent"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Absent du site"; t.dispatchEvent(new Event("input")); }); } else if(v==="ina"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"introuvable":"nv"); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Non vérifiable"; t.dispatchEvent(new Event("input")); } }); } },shapesOnMap:()=>Object.keys(shapes).filter(id=>map.hasLayer(shapes[id])).length,wkt,buildEtodGeojson,shapeNear,downloadTemplate,ghForm,openList,getPt:id=>{ const p=getPt(id); return p?JSON.parse(JSON.stringify(p)):null; },obsIds:()=>POINTS.filter(p=>p.cat==="obs"&&p.agl!=null).map(p=>p.id),lifeForm,lifeTimeline,lifeNow,buildLifeCsv,updateForm,rotateForm,pointIds:()=>POINTS.map(p=>p.id),backup,mergeFile,openTeam,accountForm,changePwForm,me:()=>ME,dump:()=>JSON.stringify(S),inspForm,openInsp,openInspList,closeInspForm,linkControls,exportDocx,buildHistCsv,showHistOnMap,setTarget,buildCsv,newObsForm,closeSheet,exportPdf,openPoint,openPlatform,openQuality,openHome,importForm};
+window.__app={etodRows,etodScore,etodStats,etodForm,surveyForm,buildEtodCsv,exportEtod,crc32q,otResolve,etodRowsCore,openGuide,openMenu,deleteInsp,leveForm,deletePlatForm,openEcarts,openEcart,openTimeline,timelineOf,declareForm,declareChoice,controlCancel,checksFor,ecarts:()=>JSON.parse(JSON.stringify(ECT())),quick:v=>{ const F=window.__ctlForm; if(!F) return; const K=F.st; if(v==="ok"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"intact":"present"); F.list().forEach(k=>F.set(k,"ok")); } else if(v==="nc"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"endommage":"present"); const k=F.list().find(x=>!["presence","position","environ"].includes(x))||"presence"; F.set(k,"nc"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Écart de test"; t.dispatchEvent(new Event("input")); } }); } else if(v==="mod"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"deplace":"modifie"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Modification constatée"; t.dispatchEvent(new Event("input")); }); } else if(v==="abs"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"detruit":"absent"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Absent du site"; t.dispatchEvent(new Event("input")); }); } else if(v==="ina"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"introuvable":"nv"); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Non vérifiable"; t.dispatchEvent(new Event("input")); } }); } },shapesOnMap:()=>Object.keys(shapes).filter(id=>map.hasLayer(shapes[id])).length,wkt,buildEtodGeojson,shapeNear,downloadTemplate,ghForm,openList,getPt:id=>{ const p=getPt(id); return p?JSON.parse(JSON.stringify(p)):null; },obsIds:()=>POINTS.filter(p=>p.cat==="obs"&&p.agl!=null).map(p=>p.id),lifeForm,lifeTimeline,lifeNow,buildLifeCsv,updateForm,rotateForm,pointIds:()=>POINTS.map(p=>p.id),backup,mergeFile,openTeam,accountForm,changePwForm,me:()=>ME,dump:()=>JSON.stringify(S),inspForm,openInsp,openInspList,closeInspForm,linkControls,exportDocx,buildHistCsv,showHistOnMap,setTarget,buildCsv,newObsForm,closeSheet,exportPdf,openPoint,openPlatform,openQuality,openHome,importForm};
 
 /* ---------- navigation : enveloppes ---------- */
 openHome=navWrap(openHome,"home"); openList=navWrap(openList,"list"); openPoint=navWrap(openPoint,"point"); openQuality=navWrap(openQuality,"quality");
