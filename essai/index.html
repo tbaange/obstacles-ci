@@ -774,7 +774,8 @@ table.kv td:last-child{font-weight:600;font-variant-numeric:tabular-nums;word-br
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .seg.s3{grid-template-columns:1fr 1fr 1fr}
 .seg button{min-height:46px;border-radius:12px;border:2px solid var(--line);font-weight:700;font-size:13.5px;padding:6px;line-height:1.15}
-.seg button.on{border-color:currentColor;background:#fff}
+.seg button.on{border-color:currentColor;background:#e8eefb;box-shadow:inset 0 0 0 1px currentColor}
+.seg button.on::before{content:"✓ ";font-weight:800}
 .inp{width:100%;height:46px;border:2px solid var(--line);border-radius:12px;padding:0 12px;font-size:16px;background:#fff}
 textarea.inp{height:84px;padding:10px 12px;resize:vertical}
 .inp:focus{outline:none;border-color:var(--rwy)}
@@ -817,7 +818,7 @@ textarea.inp{height:84px;padding:10px 12px;resize:vertical}
 .bm button{height:44px;border-radius:12px;border:2px solid var(--line);font-weight:700;font-size:13px}
 .bm button.on{border-color:var(--rwy);color:var(--rwy);background:#eff6ff}
 /* toast & dialog */
-#toast{position:fixed;z-index:3000;left:50%;bottom:calc(var(--sab) + 96px);transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast{position:fixed;z-index:3000;left:50%;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 8px);transform:translateX(-50%) translateY(20px);background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%)}
 #dlg{position:fixed;inset:0;z-index:3001;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:20px}
 #dlg.on{display:flex}
@@ -2003,9 +2004,9 @@ function openHome(){
       <div class="ft"><span>Avancement obstacles ${pc}% · OACI ${(etodStats(pl)||{score:"—"}).score}%</span><span>${s.lastTs?"Dernier contrôle "+esc(s.lastTs.slice(0,10)):"Aucun contrôle"}</span></div>
       ${!pl.builtin||pl.replaced?`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="cp" data-pdel="${esc(pl.icao)}" style="color:#b91c1c;background:#fef2f2">🗑 ${pl.replaced?"Revenir à la MCL intégrée":"Supprimer"}</button></div>`:""}</div>`; }).join("");
   const tot=PLATS.reduce((a,p)=>a+p.points.filter(x=>x.cat==="obs").length,0);
-  openSheet("Plateformes aéroportuaires",`<div class="chips"><span class="chip">${PLATS.length} plateformes</span><span class="chip">${tot} obstacles</span><span class="chip">WGS 84 · EGM96</span></div>`,
+  openSheet("Plateformes aéroportuaires",`<div class="chips"><span class="chip">${PLATS.length} plateforme${PLATS.length>1?"s":""}</span><span class="chip">${tot} obstacles</span><span class="chip">WGS 84 · EGM96</span></div>`,
     (PLATS.length?`<button class="btn p" id="hNear" style="width:100%;margin-bottom:12px">📍 Ouvrir la plateforme la plus proche (GPS)</button>`:`<div class="note" style="margin-bottom:12px"><b>Bienvenue${SEC.org?" · "+esc(SEC.org):""}.</b><br>Commencez par ajouter vos aérodromes : touchez <b>＋ Ajouter une plateforme</b> et importez votre liste de coordonnées (MCL Excel) ou le <b>modèle Excel WGS 84</b> rempli. Vos données restent sur cet appareil, chiffrées.</div>`)+cards+`<div class="acts" style="margin-top:6px"><button class="btn pk" id="hImp">＋ Ajouter une plateforme</button><button class="btn" id="hTpl">📄 Modèle d'import</button></div>
-    <div class="note">Une plateforme s'ajoute à partir d'une <b>Master Coordinate List</b> (Excel .xls/.xlsx, format MCL) ou d'un tableau simple (CSV/Excel) suivant le modèle. Les coordonnées doivent être en <b>WGS 84</b> (DMS ou degrés décimaux) et les altitudes en mètres <b>EGM96</b>.</div>`,true);
+    <div class="note">Une plateforme s'ajoute à partir du <b>modèle de livraison</b> rempli par le géomètre (feuilles Points et Métadonnées) ou d'une <b>Master Coordinate List</b> (Excel). Coordonnées en <b>WGS-84</b>, altitudes en mètres <b>EGM-96</b>.</div>`,true);
   $("shB").querySelectorAll(".pl").forEach(el=>el.onclick=()=>openPlatform(el.dataset.icao));
   $("shB").querySelectorAll("[data-pdel]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); deletePlatForm(b.dataset.pdel); });
   $("hImp").onclick=()=>importForm();
@@ -2232,7 +2233,7 @@ function openPoint(id){
   <div class="coord"><div><small>DÉCIMAL (lat, lon)</small><span class="v">${p.lat.toFixed(8)}, ${p.lon.toFixed(8)}</span></div><button class="cp" data-c="${p.lat.toFixed(8)}, ${p.lon.toFixed(8)}">Copier</button></div>`;
   if(!isNew){
     b+=`<div class="sec">Hauteurs / altitudes</div><table class="kv">
-    ${p.cat==="obs"?`<tr><td>Altitude sommet (AMSL, EGM96)</td><td>${m2(p.oh)} · ${ft(p.oh)}</td></tr><tr><td>Hauteur AGL</td><td>${p.agl!=null?m2(p.agl)+" · "+ft(p.agl):"— (non renseignée)"}</td></tr>${ground!=null?`<tr><td>Altitude du sol (déduite)</td><td>${m2(ground)}</td></tr>`:""}`
+    ${p.cat==="obs"?`<tr><td>Altitude sommet (AMSL, EGM96)</td><td>${m2(p.oh)} · ${ft(p.oh)}</td></tr><tr><td>Hauteur AGL</td><td>${p.agl!=null?m2(p.agl)+" · "+ft(p.agl):"— (non renseignée)"}</td></tr>`
       :`<tr><td>Altitude orthométrique (EGM96)</td><td>${m2(p.oh)} · ${ft(p.oh)}</td></tr>`}
     <tr><td>Hauteur ellipsoïdale (WGS 84)</td><td>${m2(p.eh)}</td></tr>
     ${p.eh!=null&&p.oh!=null?`<tr><td>Ondulation géoïde N = h − H</td><td>${(p.eh-p.oh).toFixed(2)} m</td></tr>`:""}
@@ -2344,6 +2345,9 @@ const CHK_V={ok:["Conforme","#15803d"],nc:["Non conforme","#b91c1c"],nv:["Non v�
 const SEV={maj:["Majeure","#991b1b"],min:["Mineure","#9a3412"]};
 const VERD={ok:["Conforme","#15803d"],nc:["Non conforme","#b91c1c"],inc:["Contrôle incomplet","#475569"]};
 const VERD2ST={ok:"ok",nc:"nc",inc:"ina"};
+/* états à afficher : les anciens états (modifié / absent) seulement s'ils existent encore */
+function hasLegacy(){ for(const ic in (S.controls||{})) for(const id in S.controls[ic]) if((S.controls[ic][id]||[]).some(c=>c.status==="mod"||c.status==="abs")) return true; return false; }
+const STK=t=>Object.keys(STATUS).filter(k=>(k!=="mod"&&k!=="abs")||(t?t[k]>0:hasLegacy()));
 const CONDS=["Jour","Crépuscule","Nuit"];
 const MSTATE_OF={intact:"Intact",endommage:"Endommagé",deplace:"Déplacé",detruit:"Détruit",introuvable:"Introuvable"};
 function kindOf(p){ return p.cat==="ctrl"||(p.cat==="new"&&p.newKind==="ctrl")?"ctrl":(p.cat==="obs"||p.cat==="new")?"obs":"other"; }
@@ -2351,6 +2355,7 @@ function lightReq(p){ const t=IA(p,"lightType"); if(t) return /aucun/i.test(t)?n
 function markReq(p){ const m=p.marking; return m&&!/^aucun/i.test(m)?m:null; }
 function isTempP(p){ const c=otResolve(IA(p,"obstype")); return (c!=null&&OT_TEMP.includes(c))||!!p.efEnd; }
 const fmtM=v=>String(v).replace(".",",")+" m";
+const nowSec=()=>{ const d=new Date(); return nowISO()+":"+p2(d.getSeconds())+"."+String(d.getMilliseconds()).padStart(3,"0"); };
 function checksFor(p,constat){ const k=kindOf(p), L=[];
   const A=(key,lab,req,sev,extra)=>L.push(Object.assign({key,lab,req,sev},extra||{}));
   if(k==="ctrl"){
@@ -2392,7 +2397,7 @@ function verdictOf(list,res){ if(!list.length) return "inc"; const v=list.map(c=
 /* ---------- écarts ---------- */
 const ECT=ic=>{ S.ecarts=S.ecarts||{}; const k=ic||PLAT.icao; return S.ecarts[k]||(S.ecarts[k]=[]); };
 const EC_ST={open:["Ouvert","#b91c1c"],action:["Action en cours","#1e40af"],leve:["Levé","#15803d"],clos:["Clôturé sans levée","#475569"]};
-const ACT_T=["Propriétaire informé","Courrier envoyé","Relance","NOTAM émis","Mise à jour de la base / AIP","Réunion / visite","Autre"];
+const ACT_T=["Propriétaire informé (oral, sur place)","Notification écrite au propriétaire","Relance du propriétaire","NOTAM publié","Mise à jour des données / AIP","Réunion ou visite","Autre"];
 const ecOpen=e=>e.state==="open"||e.state==="action";
 const ecOpenFor=(pid,ic)=>ECT(ic).filter(e=>e.pid===pid&&ecOpen(e));
 function ecNum(ic,op){ const y=today().slice(0,4), ag=deac(op||whoAmI()).replace(/[^A-Z]/g,"").slice(0,3)||"X"; const re=new RegExp("^"+ic+"-"+y+"-"+ag+"-(\\d+)$"); let n=0; ECT(ic).forEach(e=>{ const m=re.exec(e.num||""); if(m) n=Math.max(n,+m[1]); }); return `${ic}-${y}-${ag}-${String(n+1).padStart(3,"0")}`; }
@@ -2429,7 +2434,7 @@ function openEcart(uid){ const e=ecOf(uid); if(!e){ toast("Écart introuvable");
       ${e.closed?`<tr><td>${e.state==="leve"?"Levé le":"Clôturé le"}</td><td>${esc(e.closed.ts)} · ${esc(e.closed.op||"—")}${e.closed.motif?"<br>"+esc(e.closed.motif):""}</td></tr>`:""}</table>
     <div class="photos" id="ecPh" style="margin-top:8px"></div>
     <div class="sec">Actions et suivi (${e.actions.length})</div><div class="tl2">${acts.map(a=>`<div class="ev2"><i style="background:${a.type==="Levée"?"#15803d":a.type==="Ouverture"||a.type==="Contrôle"?"#b91c1c":a.type==="Clôture"?"#475569":"#1e40af"}"></i><small>${esc(a.ts)} · ${esc(a.op||"—")}</small><b>${esc(a.type)}</b>${a.txt?`<span>${esc(a.txt)}</span>`:""}</div>`).join("")}</div>
-    ${ecOpen(e)?`<div class="acts" style="grid-template-columns:1fr;margin-top:12px"><button class="btn p" id="ecAct">＋ Ajouter une action</button><button class="btn" id="ecClose">Clôturer sans levée (avec motif)</button></div>
+    ${ecOpen(e)?`<div class="acts" style="grid-template-columns:1fr;margin-top:12px"><button class="btn p" id="ecAct">＋ Noter une action</button><button class="btn" id="ecClose">Clôturer sans levée (avec motif)</button></div>
       <p style="font-size:12.5px;color:var(--mut);line-height:1.45">La levée se fait au contrôle suivant : si la vérification est conforme, l'application propose de lever l'écart.</p>`:""}
     ${p?`<button class="btn w" id="ecPt" style="width:100%;margin-top:8px">Voir le point ${esc(p.code||p.id)}</button>`:""}`);
   fillThumbs($("ecPh"),e.photos||[]);
@@ -2437,12 +2442,13 @@ function openEcart(uid){ const e=ecOf(uid); if(!e){ toast("Écart introuvable");
   const c=$("ecClose"); if(c) c.onclick=()=>ecCloseForm(e);
   const g=$("ecPt"); if(g) g.onclick=()=>openPoint(p.id); }
 function ecActionForm(e){ let type=null;
-  openSheet("Action · "+esc(e.num),`<div class="chips">${ecBadges(e)}</div>`,`<div class="f"><label>Type d'action *</label>${segHtml("atype",ACT_T.map(x=>[x,x]),"s2")}
+  openSheet("Noter une action · "+esc(e.num),`<div class="chips">${ecBadges(e)}</div>`,`<div class="f"><div class="note" style="margin-bottom:8px">Enregistre une action réalisée par l'équipe. L'application n'envoie aucun message.</div><label>Type d'action *</label>${segHtml("atype",ACT_T.map(x=>[x,x]),"s2")}
+    <div id="aOtherBox" style="display:none"><label>Précisez l'action *</label><input class="inp" id="aOther" placeholder="ex. Visite à la mairie, saisine de la préfecture…"></div>
     <label>Date</label><input class="inp" id="aDate" type="date" value="${today()}"><label>Détail (référence du courrier, interlocuteur, n° NOTAM…)</label><textarea class="inp" id="aTxt"></textarea>
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:16px"><button class="btn" id="aCancel">Annuler</button><button class="btn p" id="aSave">Enregistrer l'action</button></div></div>`);
-  bindSeg($("shB"),"atype",v=>type=v); $("aCancel").onclick=()=>openEcart(e.uid);
-  $("aSave").onclick=()=>{ if(!type){ toast("Choisissez le type d'action"); return; } const d=$("aDate").value||today();
-    e.actions.push({ts:d+(d===today()?nowISO().slice(10):" 00:00"),op:whoAmI(),type,txt:$("aTxt").value.trim()}); e.actions.sort((a,b)=>a.ts.localeCompare(b.ts)); if(e.state==="open") e.state="action"; e.updated=nowISO();
+  bindSeg($("shB"),"atype",v=>{ type=v; $("aOtherBox").style.display=v==="Autre"?"":"none"; if(v==="Autre") $("aOther").focus(); }); $("aCancel").onclick=()=>openEcart(e.uid);
+  $("aSave").onclick=()=>{ if(!type){ toast("Choisissez le type d'action"); return; } if(type==="Autre"){ const o=$("aOther").value.trim(); if(!o){ toast("Précisez l'action"); return; } type="Autre : "+o; } const d=$("aDate").value||today();
+    e.actions.push({ts:d+(d===today()?nowISO().slice(10):" 00:00"),tsx:d===today()?nowSec():undefined,op:whoAmI(),type,txt:$("aTxt").value.trim()}); e.actions.sort((a,b)=>a.ts.localeCompare(b.ts)); if(e.state==="open") e.state="action"; e.updated=nowISO();
     save(); toast("Action enregistrée"); openEcart(e.uid); }; }
 function ecCloseForm(e){
   openSheet("Clôturer · "+esc(e.num),`<div class="chips">${ecBadges(e)}</div>`,`<div class="f"><div class="note">Clôturer sans levée : l'écart n'a pas été corrigé sur le terrain mais n'a plus lieu d'être suivi (ex. : obstacle démantelé, base mise à jour, décision de l'autorité).</div>
@@ -2505,7 +2511,7 @@ function controlForm(p,editIdx){
       const sv=el.querySelector("[data-sev]"); if(sv) sv.querySelectorAll("button").forEach(b=>b.onclick=()=>{ st.nc[c.key].sev=b.dataset.v; sv.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); verd(); });
       const cm=el.querySelector("[data-com]"); if(cm) cm.oninput=()=>st.nc[c.key].com=cm.value;
       const ph=el.querySelector("[data-ph]"); if(ph) photoWidget(ph,st.nc[c.key].photos); });
-    $("cAllOk").onclick=()=>{ list.forEach(c=>{ if(!st.res[c.key]||!st.res[c.key].v) st.res[c.key]={v:"ok",manual:true}; }); drawChk(); };
+    $("cAllOk").onclick=()=>{ list.forEach(c=>{ if(!st.res[c.key]||!st.res[c.key].v) st.res[c.key]={v:c.auto==="gps"&&!(st.gps&&st.gps.dev<=TOL_POS)?"nv":c.night&&st.cond==="Jour"?"nv":"ok",manual:true}; }); drawChk(); };
     verd(); }
   bindSeg(B,"constat",v=>{ st.constat=v; drawChk(); });
   const g=gpsCapture($("fGps"),p,c=>{ st.gps=c; drawChk(); },null); if(me) g.take();
@@ -2518,21 +2524,21 @@ function controlForm(p,editIdx){
     const aglv=K==="obs"?parseFloat(($("fAgl").value||"").replace(",",".")):NaN;
     const checks={}; for(const c of list){ const r=st.res[c.key]||{}; const o={v:r.v||"nv",lab:c.lab,req:c.req}; if(r.v==="nc"){ o.sev=st.nc[c.key].sev; o.com=st.nc[c.key].com.trim(); o.photos=await storePhotos(p.id+"_"+c.key,st.nc[c.key].photos); } checks[c.key]=o; }
     const v=verdictOf(list,st.res);
-    const rec={uid,ts,status:VERD2ST[v],verdict:v,constat:st.constat,checks,cond:st.cond,meteo:$("fMet").value.trim()||null,insp:$("fInsp").value||null,op:opv,acc:ME.id||null,comment:$("fCom").value.trim(),agl:isNaN(aglv)?null:aglv,gps:st.gps};
+    const tsx=nowSec(); const rec={uid,ts,tsx,status:VERD2ST[v],verdict:v,constat:st.constat,checks,cond:st.cond,meteo:$("fMet").value.trim()||null,insp:$("fInsp").value||null,op:opv,acc:ME.id||null,comment:$("fCom").value.trim(),agl:isNaN(aglv)?null:aglv,gps:st.gps};
     if(K==="obs"){ const l=checks.light; rec.light=l?(l.v==="ok"?"Fonctionnel":l.v==="nc"?"Défaillant":null):null; }
     rec.photos=await storePhotos(p.id,st.photos);
     if(K==="ctrl") est.markerState=MSTATE_OF[st.constat]; if(K!=="other"){ const ech=etodCollect(B,p,est,opv); if(Object.keys(ech).length) rec.et=ech; }
     /* écarts */
     const opened=[], kept=[], lift=[];
     for(const c of list){ const r=checks[c.key], ex=ECT().find(e=>e.pid===p.id&&e.key===c.key&&ecOpen(e));
-      if(r.v==="nc"){ if(ex){ ex.actions.push({ts,op:opv,type:"Contrôle",txt:"Toujours non conforme"+(r.com?" — "+r.com:""),ctl:uid}); ex.ctls=(ex.ctls||[]).concat(uid); ex.photos=(ex.photos||[]).concat(r.photos); ex.updated=ts; kept.push(ex); r.ec=ex.uid; }
-        else { const e={uid:newUid(),num:ecNum(PLAT.icao,opv),pid:p.id,pname:p.name,key:c.key,lab:c.lab,req:c.req,sev:r.sev,com:r.com,photos:r.photos.slice(),opened:ts,op:opv,acc:ME.id||null,ctl:uid,ctls:[uid],insp:rec.insp,state:"open",actions:[{ts,op:opv,type:"Ouverture",txt:"Écart constaté au contrôle"+(r.com?" — "+r.com:""),ctl:uid}],updated:ts};
+      if(r.v==="nc"){ if(ex){ ex.actions.push({ts,tsx:nowSec(),op:opv,type:"Contrôle",txt:"Toujours non conforme"+(r.com?" — "+r.com:""),ctl:uid}); ex.ctls=(ex.ctls||[]).concat(uid); ex.photos=(ex.photos||[]).concat(r.photos); ex.updated=ts; kept.push(ex); r.ec=ex.uid; }
+        else { const e={uid:newUid(),num:ecNum(PLAT.icao,opv),pid:p.id,pname:p.name,key:c.key,lab:c.lab,req:c.req,sev:r.sev,com:r.com,photos:r.photos.slice(),opened:ts,op:opv,acc:ME.id||null,ctl:uid,ctls:[uid],insp:rec.insp,state:"open",actions:[{ts,tsx:nowSec(),op:opv,type:"Ouverture",txt:"Écart constaté au contrôle"+(r.com?" — "+r.com:""),ctl:uid}],updated:ts};
           ECT().push(e); opened.push(e); r.ec=e.uid; } }
       else if(r.v==="ok"&&ex) lift.push(ex); }
     rec.ecOpened=opened.map(e=>e.uid); rec.ecKept=kept.map(e=>e.uid);
     (CT()[p.id]=CT()[p.id]||[]).push(rec); save(); refreshMarker(p.id); renderProg(); if(target===p.id) clearTarget();
     if(lift.length&&(await ask(`Ces vérifications sont maintenant conformes. Lever ${lift.length>1?"les écarts":"l'écart"} ${lift.map(e=>e.num).join(", ")} ? La preuve est ce contrôle et ses photos.`,lift.length>1?"Lever les écarts":"Lever l'écart","Ne pas lever"))){
-      lift.forEach(e=>{ e.state="leve"; e.closed={ts,op:opv,ctl:uid}; e.actions.push({ts,op:opv,type:"Levée",txt:"Vérification conforme au contrôle du "+ts.slice(0,10),ctl:uid}); e.updated=ts; }); rec.ecLifted=lift.map(e=>e.uid); save(); }
+      lift.forEach(e=>{ e.state="leve"; e.closed={ts,op:opv,ctl:uid}; e.actions.push({ts,tsx:nowSec(),op:opv,type:"Levée",txt:"Vérification conforme au contrôle du "+ts.slice(0,10),ctl:uid}); e.updated=ts; }); rec.ecLifted=lift.map(e=>e.uid); save(); }
     toast(`✅ Contrôle enregistré · ${VERD[v][0]}${opened.length?` · ${opened.length} écart(s) ouvert(s)`:""}${rec.ecLifted?` · ${rec.ecLifted.length} levé(s)`:""}`);
     openPoint(p.id);
     if(p.cat==="obs"&&(st.constat==="absent"||st.constat==="modifie")&&(await ask(st.constat==="absent"?"Obstacle absent : enregistrer son démantèlement dans la vie de l'obstacle ?":"Obstacle modifié : enregistrer l'évolution (réduction, surélévation, balisage…) dans la vie de l'obstacle ?","Enregistrer","Plus tard")))
@@ -2564,7 +2570,7 @@ function controlCancel(p,idx){ const c=CT()[p.id][idx];
     save(); refreshMarker(p.id); renderProg(); toast("Contrôle annulé"); openPoint(p.id); }; }
 
 /* ---------- vie du point : une seule chronologie ---------- */
-function timelineOf(p){ const ic=PLAT.icao, ev=[]; const add=(ts,cat,col,what,det,act)=>ev.push({ts:ts||"",cat,col,what,det,act});
+function timelineOf(p){ const ic=PLAT.icao, ev=[]; let K=""; const add=(ts,cat,col,what,det,act)=>ev.push({ts:ts||"",k:K||ts||"",cat,col,what,det,act});
   const sv=surveyOf();
   if(p.cat==="new"){ add(p.ts,"orig","#db2777",p.newKind==="ctrl"?"Déclaration d'un nouveau repère":"Déclaration d'un nouvel obstacle",[p.op?"par "+p.op:"",typeof p.acc==="number"?"GPS téléphone ± "+p.acc.toFixed(1)+" m":""].filter(Boolean).join(" · "));
     (p.leveHist||[]).forEach(h=>{ add(h.ts,"orig","#15803d","Signalé levé",[h.ref,h.op?"par "+h.op:""].filter(Boolean).join(" · ")); add(h.annule,"orig","#64748b","Statut « levé » annulé",h.par?"par "+h.par:""); });
@@ -2572,12 +2578,12 @@ function timelineOf(p){ const ic=PLAT.icao, ev=[]; const add=(ts,cat,col,what,de
   else if(p.added) add(p.addedAt,"orig","#0b2545","Origine · ajout à la base",[p.addedVia,p.addedBy?"par "+p.addedBy:""].filter(Boolean).join(" · "));
   else add(sv.date||"","orig","#0b2545","Origine · base de la plateforme",[PLAT.builtin&&!PLAT.replaced?"MCL 2022":PLAT.file||"import",sv.org?"levé "+sv.org:"",sv.method||"",p.row?"ligne "+p.row:""].filter(Boolean).join(" · "));
   (CT()[p.id]||[]).forEach((c,i)=>{ const nc=c.checks?Object.values(c.checks).filter(x=>x.v==="nc").length:0;
-    add(c.ts,"ctl",STATUS[c.status].c,`Contrôle n°${i+1} · ${STATUS[c.status].n}`,[c.constat?CONSTAT_N[c.constat]:"",c.cond||"",nc?nc+" écart(s)":"",(c.photos||[]).length?(c.photos.length+" photo(s)"):"",c.op?"par "+c.op:"",c.comment?"« "+c.comment.slice(0,90)+(c.comment.length>90?"…":"")+" »":""].filter(Boolean).join(" · "),{ctl:i}); });
+    K=c.tsx||c.ts; add(c.ts,"ctl",STATUS[c.status].c,`Contrôle n°${i+1} · ${STATUS[c.status].n}`,[c.constat?CONSTAT_N[c.constat]:"",c.cond||"",nc?nc+" écart(s)":"",(c.photos||[]).length?(c.photos.length+" photo(s)"):"",c.op?"par "+c.op:"",c.comment?"« "+c.comment.slice(0,90)+(c.comment.length>90?"…":"")+" »":""].filter(Boolean).join(" · "),{ctl:i}); });
   ((S.cancelled||{})[ic]||[]).filter(x=>x.pid===p.id).forEach(x=>add(x.ts,"ctl","#64748b",`Contrôle du ${x.rec.ts} annulé`,`${x.motif} · par ${x.op||"—"}`));
-  ECT().filter(e=>e.pid===p.id).forEach(e=>e.actions.forEach(a=>add(a.ts,"ec",a.type==="Levée"?"#15803d":a.type==="Ouverture"?"#b91c1c":a.type==="Clôture"?"#475569":a.type==="Contrôle"?"#b91c1c":"#1e40af",
+  K=""; ECT().filter(e=>e.pid===p.id).forEach(e=>e.actions.forEach(a=>(K=a.tsx||a.ts,add)(a.ts,"ec",a.type==="Levée"?"#15803d":a.type==="Ouverture"?"#b91c1c":a.type==="Clôture"?"#475569":a.type==="Contrôle"?"#b91c1c":"#1e40af",
     `Écart ${e.num} · ${a.type==="Ouverture"?"ouvert ("+(e.sev==="maj"?"majeur":"mineur")+")":a.type==="Contrôle"?"maintenu":a.type.toLowerCase()}`,[e.lab,a.txt,a.op?"par "+a.op:""].filter(Boolean).join(" · "),{ec:e.uid})));
   (typeof lifeOf==="function"?lifeOf(p.id):[]).forEach(e=>{ const T=LIFE[e.type]||LIFE.other; add(e.date+" "+(e.ts||"").slice(11),"life",T.c,"Évolution · "+T.n,[lifeSummary(e),e.ref,e.op?"par "+e.op:""].filter(Boolean).join(" · ")); });
-  return ev.sort((a,b)=>(b.ts||"").localeCompare(a.ts||"")); }
+  return ev.map((e,i)=>Object.assign(e,{i})).sort((a,b)=>(b.k||"").localeCompare(a.k||"")||b.i-a.i); }
 let tlf="all";
 function openTimeline(id,f){ const p=getPt(id); if(!p) return; if(f) tlf=f; const all=timelineOf(p), L=tlf==="all"?all:all.filter(e=>e.cat===tlf);
   openSheet("Vie · "+esc(p.name),chipsFor(p),`<div class="fchips" style="margin-bottom:8px">${[["all","Tout"],["ctl","Contrôles"],["ec","Écarts"],["life","Évolutions"],["orig","Origine"]].map(([k,l])=>`<button data-tf="${k}" class="${tlf===k?"on":""}">${l}</button>`).join("")}</div>
@@ -2613,7 +2619,7 @@ function declareForm(kind,existing){ if(watchId===null) startGps();
       <label>Balisage lumineux</label>${segHtml("ltype",LIGHT_T.map(x=>[x,x]),"s2")}<div id="nLc"><label>Couleur</label>${segHtml("lcol",LIGHT_C.map(x=>[x,x]),"s3")}</div>
       <label>Marquage de jour</label>${segHtml("mark",MARKS.map(x=>[x,x]),"s2")}
       <label>Statut</label>${segHtml("stat",STATUSES.map(x=>[x,x]),"s3")}
-      <div id="nEff"><label>Obstacle temporaire : effectivité</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="inp" id="nEs" type="date" value="${esc(ia.efStart||"")}" aria-label="Début"><input class="inp" id="nEe" type="date" value="${esc(e.efEnd||"")}" aria-label="Fin (retrait prévu)"></div></div>
+      <div id="nEff"><label>Obstacle temporaire : effectivité</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><small style="color:var(--mut)">Début</small><input class="inp" id="nEs" type="date" value="${esc(ia.efStart||"")}" aria-label="Début"></div><div><small style="color:var(--mut)">Retrait prévu</small><input class="inp" id="nEe" type="date" value="${esc(e.efEnd||"")}" aria-label="Retrait prévu"></div></div></div>
       <label>Étendue horizontale — rayon (m)</label><input class="inp" id="nRad" type="number" inputmode="decimal" step="0.5" value="${ia.radius!=null?ia.radius:""}" placeholder="facultatif">`}
     <div class="csec"><span>3</span>Photos et observations</div><div class="photos" id="nPh"></div>
     <label>Observations</label><textarea class="inp" id="nCom" placeholder="${isC?"État, accès, personne contactée…":"Propriétaire, chantier en cours, accès…"}">${esc(e.comment||"")}</textarea>
@@ -2842,7 +2848,7 @@ async function exportPdf(period,onlyId,inspUid,ctlUid,declOnly){ const I=inspUid
   else {
   const tally={}; items.forEach(i=>tally[i.c.status]=(tally[i.c.status]||0)+1);
   doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("Synthèse",M,y); y+=6;
-  const boxes=[["Contrôles",items.length,"#0b2545"],...Object.keys(STATUS).map(k=>[STATUS[k].s,tally[k]||0,STATUS[k].c]),["Nouveaux",news.length,"#db2777"]]; const bw=(W-2*M-(boxes.length-1)*3)/boxes.length;
+  const boxes=[["Contrôles",items.length,"#0b2545"],...STK(tally).map(k=>[STATUS[k].s,tally[k]||0,STATUS[k].c]),["Nouveaux",news.length,"#db2777"]]; const bw=(W-2*M-(boxes.length-1)*3)/boxes.length;
   boxes.forEach((b,i)=>{ const x=M+i*(bw+3); doc.setFillColor(...hex(b[2])); doc.roundedRect(x,y,bw,17,2,2,"F"); doc.setTextColor(255); doc.setFontSize(15); doc.setFont("helvetica","bold"); doc.text(String(b[1]),x+bw/2,y+8.5,{align:"center"}); doc.setFontSize(7.5); doc.setFont("helvetica","normal"); doc.text(clean(b[0]),x+bw/2,y+14,{align:"center"}); });
   doc.setTextColor(0); y+=24;
   const s=stats(PLAT); doc.setFontSize(9); doc.setFont("helvetica","normal");
@@ -2877,7 +2883,7 @@ async function exportPdf(period,onlyId,inspUid,ctlUid,declOnly){ const I=inspUid
   if(news.length){ if(!declOnly){ footer(); doc.addPage(); page++; y=M; } doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.text(clean(declOnly?"Déclarations à lever":"Déclarations terrain (nouveaux obstacles et repères)"),M,y+2); y+=6;
     for(const o of news){ sheetHead(o.name,`${o.newKind==="ctrl"?"Repère":"Obstacle"} · ${o.code||o.id}`,"#db2777",o.leve?"Levé":"À lever");
       grid([["Latitude (GPS téléphone)",dms(o.lat,true)],["Longitude (GPS téléphone)",dms(o.lon,false)],["Précision GPS",typeof o.acc==="number"?"± "+o.acc.toFixed(1)+" m":"-"],["Déclaré par",`${o.op||"-"} · ${o.ts}`],
-        ...etodRows(o).filter(r=>r.src!=="manquant"&&!["pos","src","date"].includes(r.k)).map(r=>[r.lab,String(r.val)])]);
+        ...etodRows(o).filter(r=>(r.src!=="manquant"||r.k==="elev")&&!["pos","src","date"].includes(r.k)).map(r=>[r.lab,r.val==null?"à lever":String(r.val)])]);
       if(o.comment) obsBox(o.comment,[253,242,248]); await photosBlock(o.photos||[]); doc.setDrawColor(203,213,225); need(4); doc.line(M,y+1,W-M,y+1); y+=3; } }
   const lifeIt=declOnly?[]:lifeItemsFor(period,onlyId,I);
   if(lifeIt.length){ need(16); y+=6; doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(11,37,69); doc.text(clean(onlyId?"Vie de l'obstacle":"Évolutions des obstacles"),M,y+2); y+=6;
@@ -2941,7 +2947,7 @@ async function exportDocx(period,onlyId,inspUid,ctlUid,declOnly){ const I=inspUi
   const tally={}; items.forEach(i=>tally[i.c.status]=(tally[i.c.status]||0)+1); const s=stats(PLAT);
   if(declOnly) B.push(para("Éléments identifiés sur le terrain et absents de la base. Positions relevées au GPS de téléphone (indicatives), à titre de signalement. Les éléments levés par le prestataire sont transmis au format du modèle de livraison (feuilles Points et Métadonnées), puis importés pour le contrôle.",{sz:10,after:120}));
   if(!ctlUid&&!declOnly){ B.push(h1("Synthèse"));
-  const ks=Object.keys(STATUS); const sw=Math.floor(9600/(ks.length+2));
+  const tk={}; items.forEach(i=>tk[i.c.status]=(tk[i.c.status]||0)+1); const ks=STK(tk); const sw=Math.floor(9600/(ks.length+2));
   B.push(table([tr([cell("Contrôles",{w:sw,fill:"#0B2545",c:"#FFFFFF",b:true,align:"center"}),...ks.map(k=>cell(STATUS[k].n,{w:sw,fill:STATUS[k].c,c:"#FFFFFF",b:true,align:"center"})),cell("Nouveaux obstacles",{w:sw,fill:"#DB2777",c:"#FFFFFF",b:true,align:"center"})],true),
     tr([cell(String(items.length),{w:sw,b:true,sz:14,align:"center"}),...ks.map(k=>cell(String(tally[k]||0),{w:sw,b:true,sz:14,align:"center"})),cell(String(news.length),{w:sw,b:true,sz:14,align:"center"})])],Array(ks.length+2).fill(sw)));
   B.push(para(`Avancement global de la plateforme : ${s.okObs}/${s.nObs} obstacles et ${s.okSt}/${s.nSt} stations de contrôle vérifiés.${ecs.length?` Écarts concernés : ${ecs.length} (${ecs.filter(ecOpen).length} ouvert(s), dont ${ecs.filter(e=>ecOpen(e)&&e.sev==="maj").length} majeur(s)).`:""}`,{sz:10}));
@@ -2976,7 +2982,7 @@ async function exportDocx(period,onlyId,inspUid,ctlUid,declOnly){ const I=inspUi
   if(news.length){ B.push(h1(declOnly?"Déclarations à lever":"Déclarations terrain (nouveaux obstacles et repères)"));
     for(const o of news){ B.push(para(`${o.newKind==="ctrl"?"Repère":"Obstacle"} ${o.code||o.id} · ${o.name}`,{style:"Heading2",keep:true}));
       B.push(kvTable([["Latitude (GPS téléphone)",dms(o.lat,true)],["Longitude (GPS téléphone)",dms(o.lon,false)],["Précision GPS",typeof o.acc==="number"?"± "+o.acc.toFixed(1)+" m":"-"],["Déclaré par",(o.op||"-")+" le "+o.ts]]));
-      B.push(kvTable(etodRows(o).filter(r=>r.src!=="manquant"||r.req).map(r=>[r.lab,(r.val!=null?r.val:"à compléter")+(r.note?" — "+r.note:"")])));
+      B.push(kvTable(etodRows(o).filter(r=>r.src!=="manquant"||r.k==="elev").filter(r=>r.k!=="pos").map(r=>[r.lab,(r.val!=null?r.val:"à lever")+(r.note&&r.k!=="elev"?" — "+r.note:"")])));
       B.push(para([run("Observations : ",{b:true}),run(o.comment||"—")],{after:120}));
       B.push(await photoTable(o.photos||[])); } }
   /* évolutions des obstacles */
@@ -3097,7 +3103,7 @@ function openInsp(uid){
     ${I.conclusions?`<div class="sec">Conclusions</div><div class="desc">${esc(I.conclusions)}</div>`:""}
     <div class="sec">Bilan</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${box("Contrôles",d.items.length,"#0b2545")}${box("Points vérifiés",d.nPts,"#334155")}${box("Obstacles",d.obsDone+"/"+d.obsTot,"#475569")}
-      ${Object.keys(STATUS).map(k=>box(STATUS[k].n,d.t[k],STATUS[k].c)).join("")}${box("Nouveaux obst.",d.news.length,"#db2777")}</div>
+      ${STK(d.t).map(k=>box(STATUS[k].n,d.t[k],STATUS[k].c)).join("")}${box("Nouveaux obst.",d.news.length,"#db2777")}</div>
     <div class="pl" style="margin-top:10px;padding:8px 12px"><div class="bar2" style="margin-top:0">${["ok","nc","mod","abs","ina"].map(k=>d.items.length?`<i style="width:${100*d.t[k]/d.items.length}%;background:${STATUS[k].c}"></i>`:"").join("")}</div><div class="ft"><span>Couverture des obstacles ${d.obsTot?Math.round(100*d.obsDone/d.obsTot):0} %</span><span>${d.items.length} contrôle(s)</span></div></div>`;
   b+=`<div class="sec">Actions</div><div class="acts">`+
     (I.statut!=="close"?(act?`<button class="btn" id="dPause">⏸ Mettre en pause</button>`:`<button class="btn p" id="dAct">▶ Activer ce dossier</button>`)+`<button class="btn" id="dEdit">✏️ Modifier</button><button class="btn p" id="dLink">🔗 Rattacher des contrôles</button><button class="btn g" id="dClose">✅ Clôturer</button>`
@@ -3294,7 +3300,7 @@ function openJournal(opts){
   const chips=(name,arr,cur)=>arr.map(([k,l])=>`<button data-${name}="${k}" class="${cur===k?"on":""}">${l}</button>`).join("");
   openSheet("Contrôles réalisés",`<div class="search"><input class="inp" id="jq" type="search" placeholder="Rechercher : code, nom, contrôleur, dossier…" value="${esc(jf.q)}"></div>
     <div class="fchips">${PLAT?chips("scope",[["plat",esc(PLAT.icao)],["all","Toutes plateformes"]],jf.scope):""}${chips("per",[["today","Aujourd'hui"],["7d","7 jours"],["30d","30 jours"],["all","Tout"]],jf.per)}</div>
-    <div class="fchips" style="padding-top:2px">${chips("st",[["","Tous états"],...Object.keys(STATUS).map(k=>[k,STATUS[k].s])],jf.st||"")}</div>`,`<div id="jres"></div>`,true);
+    <div class="fchips" style="padding-top:2px">${chips("st",[["","Tous états"],...STK().map(k=>[k,STATUS[k].s])],jf.st||"")}</div>`,`<div id="jres"></div>`,true);
   const q=$("jq"); q.oninput=()=>{ jf.q=q.value; renderJournal(); };
   document.querySelectorAll("#shSub [data-scope],#shSub [data-per],#shSub [data-st]").forEach(b=>b.onclick=()=>{ if(b.dataset.scope!=null) jf.scope=b.dataset.scope; if(b.dataset.per!=null) jf.per=b.dataset.per; if(b.dataset.st!=null) jf.st=b.dataset.st||null;
     ["scope","per","st"].forEach(k=>document.querySelectorAll(`#shSub [data-${k}]`).forEach(x=>x.classList.toggle("on",(x.dataset[k]||"")===String((k==="st"?jf.st:jf[k])||"")))); renderJournal(); });
@@ -3385,7 +3391,7 @@ function openFilter(){
     <div class="sec" style="margin-top:0">Sélections rapides</div><div class="fchips" style="flex-wrap:wrap" id="afPre">${AF_PRESETS.map((x,i)=>`<button data-i="${i}">${x[0]}</button>`).join("")}</div>
     <label>Recherche (nom, code, type, description)</label><input class="inp" id="afQ" value="${esc(A.q)}" placeholder="ex. antenne, OBS1, Bardot…">
     <label>Catégories</label>${multi("cats",[["obs","Obstacles"],["ctrl","Stations"],["rwy","Piste/ARP"],["nav","NAVAID"],["prof","Profils"],["topo","Topo"],["qa","QA"],["added","➕ Ajoutés"],["new","🆕 Nouveaux"]],A.cats)}
-    <label>État de contrôle (dernier contrôle)</label>${multi("etat",[["none","Non contrôlé"],...Object.keys(STATUS).map(k=>[k,STATUS[k].n])],A.etat)}
+    <label>État de contrôle (dernier contrôle)</label>${multi("etat",[["none","Non contrôlé"],...STK().map(k=>[k,STATUS[k].n])],A.etat)}
     <label>Vie de l'obstacle</label>${multi("life",[["exist","Existant"],["mod","Modifié"],["dem","Démantelé"],["ev","Avec évolution enregistrée"]],A.life||[])}
     <label>Balisage lumineux</label>${multi("light",[["Y","Balisé"],["N","Non balisé"],["?","Non renseigné"]],A.light)}
     <label>Type d'obstacle</label>${multi("types",types.map(t=>[t,t]),A.types)}
@@ -3445,7 +3451,7 @@ function openSuivi(){ if(!needPlat()) return;
     <div class="acts" style="margin:10px 0 0">${AI?`<button class="btn p" id="sOpenI">Ouvrir le dossier</button>`:`<button class="btn p" id="sNewI">＋ Nouvelle inspection</button>`}<button class="btn" id="sListI">📁 Inspections (${nI})</button></div></div>
   ${(()=>{ const E=ECT(), o=E.filter(ecOpen), mj=o.filter(e=>e.sev==="maj"); return `<button type="button" class="pl" id="sEc" style="display:block;width:100%;text-align:left;border-color:${mj.length?"#b91c1c":"#cbd5e1"};margin-bottom:12px;font:inherit;color:inherit"><span class="h"><span class="code" style="background:${mj.length?"#b91c1c":"#475569"}">!</span><span class="nm"><b>Écarts : ${o.length} ouvert(s)${mj.length?` dont ${mj.length} majeur(s)`:""}</b><small>${E.length-o.length} levé(s) ou clôturé(s) · suivi, actions, levées</small></span></span></button>`; })()}
   <table class="kv"><tr><td>Obstacles contrôlés</td><td>${s.okObs} / ${s.nObs}</td></tr><tr><td>Stations contrôlées</td><td>${s.okSt} / ${s.nSt}</td></tr>
-   ${Object.keys(STATUS).map(k=>`<tr><td style="color:${STATUS[k].c}">● ${STATUS[k].n}</td><td>${s.t[k]||0}</td></tr>`).join("")}<tr><td style="color:var(--new)">● Déclarations terrain</td><td>${s.news}</td></tr></table>
+   ${STK(s.t).map(k=>`<tr><td style="color:${STATUS[k].c}">● ${STATUS[k].n}</td><td>${s.t[k]||0}</td></tr>`).join("")}<tr><td style="color:var(--new)">● Déclarations terrain</td><td>${s.news}</td></tr></table>
   ${todo.length?`<div class="sec">À traiter (${todo.length})</div>${todo.map(p=>{ const c=lastCtl(p.id); return `<div class="li" data-id="${esc(p.id)}"><span class="dot" style="background:${STATUS[c.status].c};color:${STATUS[c.status].c}"></span><div class="t"><b>${esc(p.name)}</b><small>${esc(p.code||p.id)} · ${esc(STATUS[c.status].s)}${c.light&&c.light!=="Fonctionnel"?" · balisage "+esc(c.light.toLowerCase()):""} · ${esc(c.ts.slice(0,10))}</small></div></div>`; }).join("")}`:""}
   ${etodSummaryHtml()}
   <div class="sec">Exporter · ${esc(PLAT.icao)}</div>
@@ -3894,7 +3900,7 @@ const ovr=(p,k,ic)=>{ const o=(ETi(ic||PLAT.icao)[p.id]||{})[k]; return o&&o.v!=
 /* ---- fiche de conformité : chaque attribut avec sa provenance ---- */
 function posTxt(p){ if(p.decIn) return (+p.lat).toFixed(8)+", "+(+p.lon).toFixed(8)+" (degrés décimaux)"; return (p.dlat||dms(p.lat,true))+" "+(p.dlon||dms(p.lon,false)); }
 /* Attributs OACI d'un point. Sources : levé du point (fichier), fiche du levé (rapport du géomètre), constat au contrôle. Rien n'est déduit. */
-function etodRowsCore(p,sv,ov,lastCtl,icao){ sv=sv||{}; ov=ov||(()=>null); lastCtl=lastCtl||(()=>null); const rows=[];
+function etodRowsCore(p,sv,ov,lastCtl,icao){ sv=p&&p.cat==="new"?{}:(sv||{}); ov=ov||(()=>null); lastCtl=lastCtl||(()=>null); const rows=[];
   const R=(k,lab,val,src,req,note,warn,raw)=>rows.push({k,lab,val:val==null||val===""?null:val,src:val==null||val===""?"manquant":src,req:req!==false,note,warn:!!warn,raw:raw===undefined?val:raw});
   const L=(pv,svk,fmt)=>{ if(pv!=null&&pv!=="") return [fmt?fmt(pv):pv,"leve",pv]; const s=sv[svk]; if(s!=null&&s!=="") return [fmt?fmt(s):s,"rapport",s]; return [null,"manquant",null]; };
   const m=v=>String(v).replace(".",",")+" m", pc=v=>String(v).replace(/\s*%$/,"")+" %"; const acc=p.acc||[];
@@ -3906,7 +3912,7 @@ function etodRowsCore(p,sv,ov,lastCtl,icao){ sv=sv||{}; ov=ov||(()=>null); lastC
     const o=ov("obstype"), lv=otResolve(IA(p,"obstype")), code=o?+o.v:lv;
     R("obstype","Type d'obstacle (OACI)",code!=null?otLabel(code):null,o?"constate":"leve",true,code==null&&p.typ?"type du fichier : « "+p.typ+" » (pas un type OACI)":null,false,code!=null?OBSTYPE[code][0]:null);
     const sh=p.shape&&p.shape.v; R("geom","Type de géométrie",sh?p.shape.t+" · "+sh.length+" sommets":IA(p,"geom"),"leve",true,null,false,sh?p.shape.t:IA(p,"geom"));
-    R("pos",sh?"Position du sommet le plus haut":"Position (WGS-84)",posTxt(p),"leve",true,sh?"sommet n° "+p.shape.top+" sur "+sh.length:null);
+    R("pos","Position (WGS-84)",posTxt(p),"leve",true,sh?"sommet le plus haut : n° "+p.shape.top+" sur "+sh.length:null);
     x=L(IA(p,"hres"),"hres"); R("hres","Résolution horizontale",x[0],x[1]);
     R("elev","Altitude du sommet",p.oh!=null?m(p.oh):null,"leve",true,null,false,p.oh);
     const lc=lastCtl(p.id); R("height","Hauteur (AGL)",p.agl!=null?m(p.agl):null,"leve",true,p.agl==null&&lc&&lc.agl!=null?"estimée au contrôle : "+lc.agl+" m (non reportée)":null,false,p.agl);
@@ -4008,7 +4014,7 @@ function etodSummaryBind(){ const a=$("etList"); if(!a) return; a.onclick=()=>op
 function surveyForm(after){ const s=surveyOf();
   const sel=(id,opts,v)=>`<select class="inp" id="${id}">${["",...opts].map(x=>`<option value="${esc(x)}" ${String(x)===String(v??"")?"selected":""}>${x===""?"— non indiqué —":esc(x)}</option>`).join("")}</select>`;
   openSheet("Fiche du levé · "+esc(PLAT.icao),`<div class="chips"><span class="chip">${esc(PLAT.name)}</span></div>`,`<div class="f">
-    <div class="note">Recopiez ce qu'indique le <b>rapport du géomètre</b> pour toute la base. Ces valeurs s'appliquent aux points qui n'ont pas la leur dans le fichier (badge « Fiche du levé »). Laissez vide ce que le rapport ne donne pas.</div>
+    <div class="note">${s.fromFile?`Valeurs reprises de la feuille « Métadonnées » du fichier livré : vérifiez-les.`:`Recopiez ce qu'indique le <b>rapport du géomètre</b> pour toute la base.`} Ces valeurs s'appliquent aux points qui n'ont pas la leur dans le fichier (badge « Fiche du levé »). Laissez vide ce que le rapport ne donne pas.</div>
     <label>Organisme ayant réalisé le levé *</label><input class="inp" id="svOrg" value="${esc(s.org||"")}" placeholder="Ex. : ASECNA, cabinet de géomètres">
     <label>Référence du rapport de levé</label><input class="inp" id="svRef" value="${esc(s.ref||"")}" placeholder="Ex. : Rapport n° 2022-017">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Date du levé</label><input class="inp" id="svDate" type="date" value="${esc(s.date||"")}"></div><div><label>Méthode</label>${sel("svMeth",["GNSS RTK","GNSS statique","Station totale","Photogrammétrie","LiDAR"],s.method)}</div></div>
@@ -4018,7 +4024,7 @@ function surveyForm(after){ const s=surveyOf();
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Référentiel horizontal</label>${sel("svRfH",["WGS-84"],s.refH)}</div><div><label>Référentiel vertical</label>${sel("svRfV",["EGM-96","EGM-2008"],s.refV)}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Zone(s) de couverture</label><input class="inp" id="svZ" value="${esc(s.zones||"")}" placeholder="ex. 2 ou 2, 3"></div><div><label>Validité / mise à jour</label><input class="inp" id="svVal" type="date" value="${esc(s.valid||"")}"></div></div>
     <label>Contact du producteur</label><input class="inp" id="svCt" value="${esc(s.contact||"")}" placeholder="Nom, téléphone, e-mail">
-    ${s.fromFile?`<div class="note" style="margin-top:8px">Valeurs reprises de la feuille « Métadonnées » du fichier ${esc(s.fromFile)}.</div>`:""}
+    ${s.fromFile?`<div class="note" style="margin-top:8px">Fichier : ${esc(s.fromFile)}</div>`:""}
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:14px"><button class="btn" id="svCancel">${after?"Plus tard":"Annuler"}</button><button class="btn g" id="svSave">Enregistrer</button></div></div>`);
   const num=id=>{ const v=parseFloat(($(id).value||"").replace(",",".")); return isNaN(v)?null:v; }, val=id=>$(id).value||null;
   $("svCancel").onclick=()=>after?after():openSuivi();
@@ -4029,7 +4035,7 @@ function surveyForm(after){ const s=surveyOf();
 function metaReport(meta){ const R=MCL.META_REQ; if(!meta) return `<div class="sec">Métadonnées du levé</div><div class="warnbox">Pas de feuille « Métadonnées » dans le fichier : la fiche du levé vous sera proposée après l'enregistrement, à remplir d'après le rapport du géomètre.</div>`;
   const miss=R.filter(([k])=>meta[k]==null||meta[k]==="");
   return `<div class="sec">Métadonnées du levé (feuille « Métadonnées ») · <b style="color:${miss.length?"#ea580c":"#16a34a"}">${R.length-miss.length}/${R.length}</b></div>
-    <table class="kv etod">${R.map(([k,l])=>`<tr><td>${esc(l)}</td><td>${meta[k]!=null&&meta[k]!==""?esc(String(meta[k])+(k==="accH"||k==="accV"?" m":k==="conf"?" %":"")):'<b style="color:#dc2626">À compléter</b>'}</td></tr>`).join("")}${meta.ref?`<tr><td>Rapport</td><td>${esc(meta.ref)}</td></tr>`:""}${meta.valid?`<tr><td>Validité</td><td>${esc(meta.valid)}</td></tr>`:""}</table>`; }
+    <table class="kv etod">${R.map(([k,l])=>`<tr><td>${esc(l)}</td><td>${meta[k]!=null&&meta[k]!==""?esc((k==="accH"||k==="accV"?String(meta[k]).replace(".",","):String(meta[k]))+(k==="accH"||k==="accV"?" m":k==="conf"?" %":"")):'<b style="color:#dc2626">À compléter</b>'}</td></tr>`).join("")}${meta.ref?`<tr><td>Rapport</td><td>${esc(meta.ref)}</td></tr>`:""}${meta.valid?`<tr><td>Validité</td><td>${esc(meta.valid)}</td></tr>`:""}</table>`; }
 function harmoReport(points,meta){ let gOk=0,gNeed=0;
   const blk=(arr,titre)=>{ if(!arr.length) return ""; const T=arr.length, per={};
     arr.forEach(p=>etodRowsCore(p,meta||{},null,null,null).forEach(r=>{ if(r.req){ gNeed++; if(r.src!=="manquant") gOk++; } const e=per[r.lab]=per[r.lab]||{ok:0,need:0,okN:0}; const has=r.src!=="manquant"; if(has) e.ok++; if(r.req){ e.need++; if(has) e.okN++; } }));
