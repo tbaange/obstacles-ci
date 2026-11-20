@@ -1998,17 +1998,43 @@ function openHome(){
       <div class="stats"><div><b>${s.nObs}</b><small>obstacles</small></div><div><b>${s.okObs}</b><small>contrôlés</small></div><div><b style="color:${s.todo?"#ea580c":"inherit"}">${s.todo}</b><small>à traiter</small></div><div><b style="color:${s.news?"#db2777":"inherit"}">${s.news}</b><small>nouveaux</small></div></div>
       <div class="bar2">${["ok","nc","mod","abs","ina"].map(seg).join("")}</div>
       ${S.activeInsp&&S.activeInsp[pl.icao]&&inspOf(S.activeInsp[pl.icao])?`<div class="chips" style="margin-top:8px"><span class="chip c" style="background:#1e3a8a">📁 ${esc(inspOf(S.activeInsp[pl.icao]).ref)} en cours</span></div>`:""}
-      <div class="ft"><span>Avancement obstacles ${pc}% · OACI ${(etodStats(pl)||{score:"—"}).score}%</span><span>${s.lastTs?"Dernier contrôle "+esc(s.lastTs.slice(0,10)):"Aucun contrôle"}</span></div></div>`; }).join("");
+      <div class="ft"><span>Avancement obstacles ${pc}% · OACI ${(etodStats(pl)||{score:"—"}).score}%</span><span>${s.lastTs?"Dernier contrôle "+esc(s.lastTs.slice(0,10)):"Aucun contrôle"}</span></div>
+      ${!pl.builtin||pl.replaced?`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button type="button" class="cp" data-pdel="${esc(pl.icao)}" style="color:#b91c1c;background:#fef2f2">🗑 ${pl.replaced?"Revenir à la MCL intégrée":"Supprimer"}</button></div>`:""}</div>`; }).join("");
   const tot=PLATS.reduce((a,p)=>a+p.points.filter(x=>x.cat==="obs").length,0);
   openSheet("Plateformes aéroportuaires",`<div class="chips"><span class="chip">${PLATS.length} plateformes</span><span class="chip">${tot} obstacles</span><span class="chip">WGS 84 · EGM96</span></div>`,
     (PLATS.length?`<button class="btn p" id="hNear" style="width:100%;margin-bottom:12px">📍 Ouvrir la plateforme la plus proche (GPS)</button>`:`<div class="note" style="margin-bottom:12px"><b>Bienvenue${SEC.org?" · "+esc(SEC.org):""}.</b><br>Commencez par ajouter vos aérodromes : touchez <b>＋ Ajouter une plateforme</b> et importez votre liste de coordonnées (MCL Excel) ou le <b>modèle Excel WGS 84</b> rempli. Vos données restent sur cet appareil, chiffrées.</div>`)+cards+`<div class="acts" style="margin-top:6px"><button class="btn pk" id="hImp">＋ Ajouter une plateforme</button><button class="btn" id="hTpl">📄 Modèle d'import</button></div>
     <div class="note">Une plateforme s'ajoute à partir d'une <b>Master Coordinate List</b> (Excel .xls/.xlsx, format MCL) ou d'un tableau simple (CSV/Excel) suivant le modèle. Les coordonnées doivent être en <b>WGS 84</b> (DMS ou degrés décimaux) et les altitudes en mètres <b>EGM96</b>.</div>`,true);
   $("shB").querySelectorAll(".pl").forEach(el=>el.onclick=()=>openPlatform(el.dataset.icao));
+  $("shB").querySelectorAll("[data-pdel]").forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); deletePlatForm(b.dataset.pdel); });
   $("hImp").onclick=()=>importForm();
   if($("hNear")) $("hNear").onclick=()=>{ closeSheet(); if(me){ nearestPlat(true); } else { wantNearest=true; startGps(); toast("Recherche de votre position…"); } };
   $("hTpl").onclick=downloadTemplate;
   if(!PLAT){ platLayer.addTo(map); drawPlatPins(); }
 }
+
+/* ---------- suppression d'une plateforme ---------- */
+function platData(ic){ const n=o=>o?Object.values(o).reduce((a,v)=>a+(Array.isArray(v)?v.length:1),0):0;
+  return {ctl:n((S.controls||{})[ic]),news:((S.newObs||{})[ic]||[]).length,ec:((S.ecarts||{})[ic]||[]).length,insp:(S.insp||[]).filter(i=>i.icao===ic).length}; }
+function deletePlatForm(ic){ const pl=PLATS.find(p=>p.icao===ic); if(!pl) return; const d=platData(ic), has=d.ctl||d.news||d.ec||d.insp;
+  openSheet((pl.replaced?"Revenir à la MCL · ":"Supprimer · ")+esc(ic),`<div class="chips"><span class="chip">${esc(pl.name)}</span><span class="chip">${pl.points.length} points</span></div>`,`<div class="f">
+    ${pl.replaced?`<div class="note">La base importée pour ${esc(ic)} sera supprimée et la MCL 2022 intégrée reprendra sa place. Les contrôles sont conservés.</div>`
+      :`<div class="note">La plateforme <b>${esc(ic)} · ${esc(pl.name)}</b> et sa base de points seront retirées de ce téléphone.</div>
+      ${has?`<div class="warnbox" style="margin-top:8px">Données de terrain liées : ${d.ctl} contrôle(s), ${d.ec} écart(s), ${d.news} déclaration(s), ${d.insp} dossier(s) d'inspection.</div>
+        <p style="font-size:13px;color:var(--mut);line-height:1.45">« Garder les contrôles » : si vous réimportez la même base plus tard, les contrôles se rattachent de nouveau aux points de même identifiant. Pensez à faire une sauvegarde avant de tout effacer.</p>`:""}`}
+    <div class="acts" style="grid-template-columns:1fr;margin-top:12px">
+      <button class="btn p" id="pdKeep" style="background:#b91c1c">${pl.replaced?"Revenir à la MCL intégrée":has?"Supprimer la plateforme, garder les contrôles":"Supprimer la plateforme"}</button>
+      ${!pl.replaced&&has?`<button class="btn" id="pdAll" style="color:#b91c1c">Tout effacer : plateforme, contrôles, écarts, photos</button>`:""}
+      <button class="btn" id="pdCancel">Annuler</button></div></div>`);
+  $("pdCancel").onclick=()=>openHome();
+  const done=async all=>{ await PDB.del(ic);
+    if(all){ ["controls","newObs","etod","survey","life","added","ecarts","cancelled"].forEach(k=>{ if(S[k]) delete S[k][ic]; }); S.insp=(S.insp||[]).filter(i=>i.icao!==ic); if(S.activeInsp) delete S.activeInsp[ic];
+      const ks=(await IDB.keys().catch(()=>[])).filter(k=>String(k).startsWith(ic+"_")); for(const k of ks) await IDB.del(k).catch(()=>{}); save(); }
+    await loadPlats(); Object.keys(qCache).forEach(k=>delete qCache[k]); delete rwyCache[ic];
+    if(PLATS.find(p=>p.icao===ic)){ if(PLAT&&PLAT.icao===ic) openPlatform(ic,true); else openHome(); }
+    else { if(PLAT&&PLAT.icao===ic){ PLAT=null; POINTS=[]; byId={}; buildMarkers(); renderTitle(); renderProg(); } openHome(); }
+    toast(pl.replaced?`${ic} : retour à la MCL intégrée`:all?`🗑 ${ic} et ses données effacés`:`🗑 ${ic} supprimée`); };
+  $("pdKeep").onclick=()=>done(false);
+  const a=$("pdAll"); if(a) a.onclick=async()=>{ if(await ask(`Effacer définitivement ${ic}, ses ${d.ctl} contrôle(s), ${d.ec} écart(s), ses déclarations et photos ? Cette action est irréversible.`,"Tout effacer")) done(true); }; }
 
 /* ---------- import d'une plateforme ---------- */
 function importForm(existing){
@@ -2073,9 +2099,7 @@ function openQuality(){
   B.querySelectorAll(".qrow").forEach(r=>r.querySelector(".t").onclick=()=>r.classList.toggle("open"));
   B.querySelectorAll(".lst [data-id]").forEach(x=>x.onclick=()=>{ const p=getPt(x.dataset.id); if(!p) return; if(!S.cats[p.cat]){ S.cats[p.cat]=true; save(); applyCats(); } map.setView([p.lat,p.lon],18); openPoint(p.id); });
   $("qUpd").onclick=()=>importForm(PLAT);
-  const qd=$("qDel"); if(qd) qd.onclick=async()=>{ if(await ask(PLAT.replaced?`Supprimer la base importée et revenir à la MCL 2022 intégrée pour ${PLAT.icao} ? Les contrôles sont conservés.`:`Supprimer la plateforme ${PLAT.icao} de ce téléphone ? Les contrôles saisis restent dans la sauvegarde.`,"Confirmer")){
-    const ic=PLAT.icao; await PDB.del(ic); await loadPlats(); Object.keys(qCache).forEach(k=>delete qCache[k]);
-    if(PLATS.find(p=>p.icao===ic)) openPlatform(ic,true); else { PLAT=null; POINTS=[]; byId={}; buildMarkers(); renderTitle(); renderProg(); openHome(); } } };
+  const qd=$("qDel"); if(qd) qd.onclick=()=>deletePlatForm(PLAT.icao);
 }
 
 /* ---------- GPS ---------- */
@@ -4027,7 +4051,7 @@ async function exportEtod(){ if(!needPlat()) return; const sv=surveyOf(), st=eto
   const z=new JSZip(); z.file(nm+".csv",csv); z.file(nm+".geojson",buildEtodGeojson()); z.file(nm+"_metadonnees.txt","﻿"+meta); deliver(await z.generateAsync({type:"blob"}),nm+".zip","application/zip"); }
 
 const lastCtlG=id=>lastCtl(id);
-window.__app={etodRows,etodScore,etodStats,etodForm,surveyForm,buildEtodCsv,exportEtod,crc32q,otResolve,etodRowsCore,openEcarts,openEcart,openTimeline,timelineOf,declareForm,declareChoice,controlCancel,checksFor,ecarts:()=>JSON.parse(JSON.stringify(ECT())),quick:v=>{ const F=window.__ctlForm; if(!F) return; const K=F.st; if(v==="ok"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"intact":"present"); F.list().forEach(k=>F.set(k,"ok")); } else if(v==="nc"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"endommage":"present"); const k=F.list().find(x=>!["presence","position","environ"].includes(x))||"presence"; F.set(k,"nc"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Écart de test"; t.dispatchEvent(new Event("input")); } }); } else if(v==="mod"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"deplace":"modifie"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Modification constatée"; t.dispatchEvent(new Event("input")); }); } else if(v==="abs"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"detruit":"absent"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Absent du site"; t.dispatchEvent(new Event("input")); }); } else if(v==="ina"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"introuvable":"nv"); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Non vérifiable"; t.dispatchEvent(new Event("input")); } }); } },shapesOnMap:()=>Object.keys(shapes).filter(id=>map.hasLayer(shapes[id])).length,wkt,buildEtodGeojson,shapeNear,downloadTemplate,ghForm,openList,getPt:id=>{ const p=getPt(id); return p?JSON.parse(JSON.stringify(p)):null; },obsIds:()=>POINTS.filter(p=>p.cat==="obs"&&p.agl!=null).map(p=>p.id),lifeForm,lifeTimeline,lifeNow,buildLifeCsv,updateForm,rotateForm,pointIds:()=>POINTS.map(p=>p.id),backup,mergeFile,openTeam,accountForm,changePwForm,me:()=>ME,dump:()=>JSON.stringify(S),inspForm,openInsp,openInspList,closeInspForm,linkControls,exportDocx,buildHistCsv,showHistOnMap,setTarget,buildCsv,newObsForm,closeSheet,exportPdf,openPoint,openPlatform,openQuality,openHome,importForm};
+window.__app={etodRows,etodScore,etodStats,etodForm,surveyForm,buildEtodCsv,exportEtod,crc32q,otResolve,etodRowsCore,deletePlatForm,openEcarts,openEcart,openTimeline,timelineOf,declareForm,declareChoice,controlCancel,checksFor,ecarts:()=>JSON.parse(JSON.stringify(ECT())),quick:v=>{ const F=window.__ctlForm; if(!F) return; const K=F.st; if(v==="ok"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"intact":"present"); F.list().forEach(k=>F.set(k,"ok")); } else if(v==="nc"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"endommage":"present"); const k=F.list().find(x=>!["presence","position","environ"].includes(x))||"presence"; F.set(k,"nc"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Écart de test"; t.dispatchEvent(new Event("input")); } }); } else if(v==="mod"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"deplace":"modifie"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Modification constatée"; t.dispatchEvent(new Event("input")); }); } else if(v==="abs"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"detruit":"absent"); F.all(); document.querySelectorAll("[data-com]").forEach(t=>{ t.value="Absent du site"; t.dispatchEvent(new Event("input")); }); } else if(v==="ina"){ F.constat(document.querySelector('[data-seg="constat"] [data-v="intact"]')?"introuvable":"nv"); document.querySelectorAll("[data-com]").forEach(t=>{ if(!t.value){ t.value="Non vérifiable"; t.dispatchEvent(new Event("input")); } }); } },shapesOnMap:()=>Object.keys(shapes).filter(id=>map.hasLayer(shapes[id])).length,wkt,buildEtodGeojson,shapeNear,downloadTemplate,ghForm,openList,getPt:id=>{ const p=getPt(id); return p?JSON.parse(JSON.stringify(p)):null; },obsIds:()=>POINTS.filter(p=>p.cat==="obs"&&p.agl!=null).map(p=>p.id),lifeForm,lifeTimeline,lifeNow,buildLifeCsv,updateForm,rotateForm,pointIds:()=>POINTS.map(p=>p.id),backup,mergeFile,openTeam,accountForm,changePwForm,me:()=>ME,dump:()=>JSON.stringify(S),inspForm,openInsp,openInspList,closeInspForm,linkControls,exportDocx,buildHistCsv,showHistOnMap,setTarget,buildCsv,newObsForm,closeSheet,exportPdf,openPoint,openPlatform,openQuality,openHome,importForm};
 
 /* ---------- navigation : enveloppes ---------- */
 openHome=navWrap(openHome,"home"); openList=navWrap(openList,"list"); openPoint=navWrap(openPoint,"point"); openQuality=navWrap(openQuality,"quality");
